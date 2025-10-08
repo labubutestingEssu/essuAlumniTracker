@@ -1,0 +1,50 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "essu-alumni-tracker-9ded3",
+          "appId": "1:68095816941:android:519765fafff53893aa08e4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "essu-alumni-tracker-9ded3",
+          "configurations": {
+            "android": "1:68095816941:android:519765fafff53893aa08e4",
+            "ios": "1:68095816941:ios:8f934e13145294faaa08e4",
+            "macos": "1:68095816941:ios:8f934e13145294faaa08e4",
+            "web": "1:68095816941:web:e53b126c3c2abcdaaa08e4",
+            "windows": "1:68095816941:web:01865d1b223e307baa08e4"
+          }
+        }
+      }
+    }
+  },
+  "apphosting": {
+    "port": 5002,
+    "rootDirectory": "web"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+graph TD
+    %% External Entities (rectangles in proper DFD)
+    Alumni["Alumni<br/>(External Entity)"]
+    Admin["Admin<br/>(External Entity)"]
+    University["University<br/>(External Entity)"]
+    %% Employer["Employer<br/>(External Entity)"]
+    
+    %% Main Process (circle in proper DFD)
+    MainProcess["ESSU Alumni Tracker System<br/>(Process 0)"]
+    
+    %% Data Stores (open rectangles in proper DFD)
+    UserDB[("D1: User Profiles<br/>(Data Store)")]
+    EventDB[("D2: Events<br/>(Data Store)")]
+    JobDB[("D3: Jobs<br/>(Data Store)")]
+    NewsDB[("D4: News & Announcements<br/>(Data Store)")]
+    NotificationDB[("D5: Notifications<br/>(Data Store)")]
+    SettingsDB[("D6: User Settings<br/>(Data Store)")]
+    
+    %% Data Flows from External Entities to Process
+    Alumni -->|"Login Credentials<br/>Profile Updates<br/>Event Registrations<br/>Job Applications"| MainProcess
+    Admin -->|"User Management<br/>Content Creation<br/>System Configuration"| MainProcess
+    University -->|"Official Announcements<br/>Event Information"| MainProcess
+    %% Employer -->|"Job Postings<br/>Application Reviews"| MainProcess
+    
+    %% Data Flows from Process to External Entities
+    MainProcess -->|"Authentication Status<br/>Profile Information<br/>Event Confirmations<br/>Application Status"| Alumni
+    MainProcess -->|"User Reports<br/>System Analytics<br/>Content Management"| Admin
+    MainProcess -->|"Alumni Statistics<br/>Event Reports"| University
+    %% MainProcess -->|"Candidate Profiles<br/>Application Details"| Employer
+    
+    %% Data Flows between Process and Data Stores
+    MainProcess <-->|"User Data"| UserDB
+    MainProcess <-->|"Event Data"| EventDB
+    MainProcess <-->|"Job Data"| JobDB
+    MainProcess <-->|"News Data"| NewsDB
+    MainProcess <-->|"Notification Data"| NotificationDB
+    MainProcess <-->|"Settings Data"| SettingsDB
+    
+    %% Styling for clarity
+    classDef entity fill:#0088C7FF,stroke:#01579b,stroke-width:2px
+    classDef process fill:#5E076BFF,stroke:#4a148c,stroke-width:2px
+    classDef datastore fill:#001100FF,stroke:#1b5e20,stroke-width:2px
+    
+    class Alumni,Admin,University,Employer entity
+    class MainProcess process
+    class UserDB,EventDB,JobDB,NewsDB,NotificationDB,SettingsDB datastore

@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow all access for debugging
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    // Allow authenticated users to upload to the events folder - expanded permissions for testing
+    match /events/{filename} {
+      allow write, create, update, delete: if request.auth != null;
+    }
+    
+    // Allow test uploads for debugging
+    match /test_uploads/{filename} {
+      allow write, create, update, delete: if request.auth != null;
+    }
+    
+    // Allow users to only modify their own files
+    match /users/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+} 

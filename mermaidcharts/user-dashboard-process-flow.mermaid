@@ -1,0 +1,32 @@
+flowchart TD
+    A[User Login] --> B{Login Success?}
+    B -- No --> Z[Show Error Message]
+    B -- Yes --> C[Show User Dashboard]
+    C --> D[View/Edit Profile]
+    C --> E[Browse/Search Jobs]
+    C --> F[Browse/Search Events]
+    C --> G[Browse/Search News]
+    C --> H[View Notifications]
+    D --> D1[Edit Profile]
+    D1 --> D1a{Success?}
+    D1a -- Yes --> D[Show Success]
+    D1a -- No --> Z
+    E --> E1[View Job Details]
+    E1 --> E2[Apply to Job]
+    E2 --> E2a{Application Success?}
+    E2a -- Yes --> H[Show Notification]
+    E2a -- No --> Z
+    F --> F1[View Event Details]
+    F1 --> F2[Register for Event]
+    F2 --> F2a{Registration Success?}
+    F2a -- Yes --> H[Show Notification]
+    F2a -- No --> Z
+    G --> G1[View News Details]
+    G1 --> G2[Like/Save/Share News]
+    G2 --> G2a{Success?}
+    G2a -- Yes --> G[Show Success]
+    G2a -- No --> Z
+    H --> H1[Mark as Read]
+    H1 --> H2[Notification Cleared]
+    C --> I[Logout]
+    I --> J[Return to Login Screen] 

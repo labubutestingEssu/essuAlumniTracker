@@ -1,0 +1,18 @@
+graph TD
+    %% External Entities
+    E_Alumni["Alumni"]
+    E_Admin["Admin"]
+    E_University["University"]
+
+    %% Central Process (System)
+    P_System("<strong>0<br>ESSU Alumni Tracker<br>System</strong>")
+
+    %% Data Flows
+    E_Alumni -- "Login/Registration Info<br>Profile Data & Updates<br>Job Applications (incl. Resume Links)<br>Job Postings (if approved alumni)<br>Event RSVPs, News Interactions<br>Search Queries, Settings Changes" --> P_System
+    P_System -- "Authentication Status<br>Profile & Directory Views<br>Job/Event/News Feeds<br>Notifications, Application Status" --> E_Alumni
+
+    E_Admin -- "Login Credentials<br>User & Content Management Actions<br>(Profiles, Job Postings, Events, News)<br>System Configuration Settings" --> P_System
+    P_System -- "Admin Dashboard & Reports<br>User/Content Data Views<br>System Logs" --> E_Admin
+
+    E_University -- "News & Event Information<br>(Submitted via Admin)" --> P_System
+    P_System -- "Content Publication Status<br>Event/News Performance Insights (to Admin)" --> E_University

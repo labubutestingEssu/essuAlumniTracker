@@ -1,0 +1,63 @@
+flowchart TD
+    A[Admin Dashboard]
+    A --> B[Load User Data]
+    B --> B1[View User List]
+    B1 --> B2[Create User]
+    B1 --> B3[Edit User]
+    B1 --> B4[Delete User]
+    B2 --> B1a{Success?}
+    B2 --> B1a
+    B3 --> B1b{Success?}
+    B3 --> B1b
+    B4 --> B1c{Confirm Delete?}
+    B4 --> B1c
+    B1a -- Yes --> B1[Refresh User List]
+    B1a -- No --> B1[Show Error]
+    B1b -- Yes --> B1[Refresh User List]
+    B1b -- No --> B1[Show Error]
+    B1c -- Yes --> B1d{Success?}
+    B1c -- No --> B1
+    B1d -- Yes --> B1[Refresh User List]
+    B1d -- No --> B1[Show Error]
+
+    B --> C[Load Event Data]
+    C --> C1[View Event List]
+    C1 --> C2[Create Event]
+    C1 --> C3[Edit Event]
+    C1 --> C4[Delete Event]
+    C2 --> C1a{Success?}
+    C2 --> C1a
+    C3 --> C1b{Success?}
+    C3 --> C1b
+    C4 --> C1c{Confirm Delete?}
+    C4 --> C1c
+    C1a -- Yes --> C1[Refresh Event List]
+    C1a -- No --> C1[Show Error]
+    C1b -- Yes --> C1[Refresh Event List]
+    C1b -- No --> C1[Show Error]
+    C1c -- Yes --> C1d{Success?}
+    C1c -- No --> C1
+    C1d -- Yes --> C1[Refresh Event List]
+    C1d -- No --> C1[Show Error]
+
+    C --> D[Load News Data]
+    D --> D1[View News List]
+    D1 --> D2[Create News]
+    D1 --> D3[Edit News]
+    D1 --> D4[Delete News]
+    D2 --> D1a{Success?}
+    D2 --> D1a
+    D3 --> D1b{Success?}
+    D3 --> D1b
+    D4 --> D1c{Confirm Delete?}
+    D4 --> D1c
+    D1a -- Yes --> D1[Refresh News List]
+    D1a -- No --> D1[Show Error]
+    D1b -- Yes --> D1[Refresh News List]
+    D1b -- No --> D1[Show Error]
+    D1c -- Yes --> D1d{Success?}
+    D1c -- No --> D1
+    D1d -- Yes --> D1[Refresh News List]
+    D1d -- No --> D1[Show Error]
+
+    D --> E[End] 

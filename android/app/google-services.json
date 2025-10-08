@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "68095816941",
+    "project_id": "essu-alumni-tracker-9ded3",
+    "storage_bucket": "essu-alumni-tracker-9ded3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:68095816941:android:519765fafff53893aa08e4",
+        "android_client_info": {
+          "package_name": "com.example.essu_alumni_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJX0wBrEm7m262m2pIucQu4cv1LMLNhE4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

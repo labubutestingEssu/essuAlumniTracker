@@ -1,0 +1,93 @@
+erDiagram
+    USER {
+        string userId PK
+        string email
+        string fullName
+        string batchYear
+        string course
+        string studentId
+        string cellphoneNo
+        string role
+        boolean isActive
+    }
+    USER_SETTINGS {
+        string userId PK, FK
+        string notificationPreferences
+        string privacySettings
+    }
+    EVENT {
+        string eventId PK
+        string title
+        string description
+        date date
+        string location
+        string createdBy FK
+    }
+    EVENT_ATTENDEES {
+        string attendeeId PK
+        string eventId FK
+        string userId FK
+        string status
+    }
+    JOB {
+        string jobId PK
+        string title
+        string company
+        string description
+        string postedBy FK
+    }
+    JOB_APPLICATIONS {
+        string applicationId PK
+        string jobId FK
+        string userId FK
+        string status
+    }
+    NEWS {
+        string newsId PK
+        string title
+        string content
+        string category
+        string authorId FK
+    }
+    NEWS_INTERACTIONS {
+        string interactionId PK
+        string newsId FK
+        string userId FK
+        boolean liked
+        boolean saved
+    }
+    USER_CONNECTIONS {
+        string connectionId PK
+        string userId FK
+        string connectionUserId FK
+        string status
+    }
+    NOTIFICATIONS {
+        string notificationId PK
+        string userId FK
+        string type
+        string title
+        string relatedId
+        boolean isRead
+    }
+    NOTIFICATION_CHANNELS {
+        string channelId PK
+        string name
+        string description
+        int importance
+    }
+
+    %% Relationships (Crow's Foot)
+    USER ||--o{ USER_SETTINGS : "has"
+    USER ||--o{ EVENT : "creates"
+    USER ||--o{ EVENT_ATTENDEES : "attends"
+    USER ||--o{ JOB : "posts"
+    USER ||--o{ JOB_APPLICATIONS : "applies"
+    USER ||--o{ NEWS : "authors"
+    USER ||--o{ NEWS_INTERACTIONS : "interacts"
+    USER ||--o{ USER_CONNECTIONS : "connects"
+    USER ||--o{ NOTIFICATIONS : "receives"
+    EVENT ||--o{ EVENT_ATTENDEES : "has"
+    JOB ||--o{ JOB_APPLICATIONS : "has"
+    NEWS ||--o{ NEWS_INTERACTIONS : "has"
+    NOTIFICATION_CHANNELS ||--o{ NOTIFICATIONS : "categorizes"
