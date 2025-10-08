@@ -105,10 +105,15 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       for (var user in users) {
         final survey = surveyByUserUid[user.uid];
         debugPrint('[DEBUG] User: uid=${user.uid}, fullName=${user.fullName}, surveyFound=${survey != null}');
+        // Use facultyId for admins, studentId for alumni
+        final idValue = (user.role == UserRole.admin || user.role == UserRole.super_admin)
+          ? (user.facultyId ?? '')
+          : user.studentId;
+          
         final userRow = [
           user.fullName,
           user.email,
-          user.studentId,
+          idValue,
           user.college,
           user.course,
           user.batchYear,

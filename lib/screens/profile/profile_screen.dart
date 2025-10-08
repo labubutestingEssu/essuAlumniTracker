@@ -537,7 +537,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         print("Admin updating profile for user ID: ${widget.userId}");
         
         // Update the user data directly
-        await _userService.updateUser(widget.userId!, {
+        // Determine if we should save to facultyId or studentId based on role
+        final Map<String, dynamic> updateData = {
           'firstName': firstName,
           'lastName': lastName,
           'middleName': middleName,
@@ -550,10 +551,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'company': _companyController.text,
           'currentOccupation': _positionController.text,
           'location': _locationController.text,
-          'studentId': _shouldShowStudentFields() ? _studentIdController.text : '',
           'facebookUrl': _facebookController.text.trim(),
           'instagramUrl': _instagramController.text.trim(),
-        });
+        };
+        
+        // Add facultyId or studentId based on role
+        if (_userData!.role == UserRole.admin || _userData!.role == UserRole.super_admin) {
+          final facultyIdValue = _shouldShowStudentFields() ? _studentIdController.text : '';
+          updateData['facultyId'] = facultyIdValue;
+          updateData['studentId'] = ''; // Clear studentId for admins
+          print('💾 Saving FACULTY ID for admin: $facultyIdValue');
+        } else {
+          final studentIdValue = _shouldShowStudentFields() ? _studentIdController.text : '';
+          updateData['studentId'] = studentIdValue;
+          print('💾 Saving STUDENT ID for alumni: $studentIdValue');
+        }
+        
+        await _userService.updateUser(widget.userId!, updateData);
         
         // Update role if super admin is editing and role has changed
         if (_isSuperAdmin && _selectedRole != null && _selectedRole != _userData!.role) {
@@ -577,6 +591,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Regular user updating their own profile
         print("User updating their own profile");
         
+        // Determine if we should save to facultyId or studentId based on role
+        final isAdminUser = _userData!.role == UserRole.admin || _userData!.role == UserRole.super_admin;
+        final idValue = _shouldShowStudentFields() ? _studentIdController.text.trim() : '';
+        
+        print('💾 [updateUserProfile] Role: ${_userData!.role}, isAdmin: $isAdminUser, idValue: $idValue');
+        
         bool success = await _userService.updateUserProfile(
           firstName: firstName,
           lastName: lastName,
@@ -589,10 +609,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           location: _locationController.text,
           bio: _bioController.text,
           phone: _phoneController.text,
-          studentId: _shouldShowStudentFields() ? _studentIdController.text.trim() : '',
+          studentId: (_userData!.role == UserRole.alumni && _shouldShowStudentFields()) 
+            ? idValue
+            : '',
+          facultyId: isAdminUser && _shouldShowStudentFields()
+            ? idValue
+            : null,
           facebookUrl: _facebookController.text.trim(),
           instagramUrl: _instagramController.text.trim(),
         );
+        
+        print('💾 Saved - studentId: ${(_userData!.role == UserRole.alumni && _shouldShowStudentFields()) ? idValue : ""}, facultyId: ${isAdminUser && _shouldShowStudentFields() ? idValue : null}');
         
         // Update college separately using updateUser since updateUserProfile doesn't support it yet
         if (_selectedCollege != null) {
@@ -1480,12 +1507,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SwitchListTile(
                 title: Text(_getIdFieldLabel()),
                 subtitle: Text('${_getIdFieldLabel()} is visible to other alumni'),
-                value: fieldVisibility['studentId'] ?? false,
+                value: (_userData?.role == UserRole.admin || _userData?.role == UserRole.super_admin)
+                  ? (fieldVisibility['facultyId'] ?? false)
+                  : (fieldVisibility['studentId'] ?? false),
                 onChanged: (bool value) async {
-                  await _userService.updateFieldVisibility('studentId', value);
+                  final fieldKey = (_userData?.role == UserRole.admin || _userData?.role == UserRole.super_admin)
+                    ? 'facultyId'
+                    : 'studentId';
+                  await _userService.updateFieldVisibility(fieldKey, value);
                   setState(() {
-                    fieldVisibility['studentId'] = value;
-                    _userSettings = _userSettings!.updateFieldVisibility('studentId', value);
+                    fieldVisibility[fieldKey] = value;
+                    _userSettings = _userSettings!.updateFieldVisibility(fieldKey, value);
                   });
                 },
               ),
@@ -1714,7 +1746,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _bioController.text = (userData.bio ?? '').trim();
       
       // Education Information
-      _studentIdController.text = userData.studentId.trim();
+      // For admins, load facultyId; for alumni, load studentId
+      if (userData.role == UserRole.admin || userData.role == UserRole.super_admin) {
+        _studentIdController.text = (userData.facultyId ?? '').trim();
+        print('👨‍💼 Loading FACULTY ID for admin: ${userData.facultyId}');
+      } else {
+        _studentIdController.text = userData.studentId.trim();
+        print('🎓 Loading STUDENT ID for alumni: ${userData.studentId}');
+      }
       _batchYearController.text = userData.batchYear.trim();
       
       // Employment Information
@@ -1748,7 +1787,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _companyController.text = userData.company ?? '';
       _positionController.text = userData.currentOccupation ?? '';
       _locationController.text = userData.location ?? '';
-      _studentIdController.text = userData.studentId;
+      // For admins, load facultyId; for alumni, load studentId (fallback)
+      if (userData.role == UserRole.admin || userData.role == UserRole.super_admin) {
+        _studentIdController.text = userData.facultyId ?? '';
+        print('👨‍💼 [FALLBACK] Loading FACULTY ID for admin: ${userData.facultyId}');
+      } else {
+        _studentIdController.text = userData.studentId;
+        print('🎓 [FALLBACK] Loading STUDENT ID for alumni: ${userData.studentId}');
+      }
       _facebookController.text = userData.facebookUrl ?? '';
       _instagramController.text = userData.instagramUrl ?? '';
     }

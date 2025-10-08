@@ -219,6 +219,10 @@ class UnifiedUserService {
     String? phone,
     String? facebookUrl,
     String? instagramUrl,
+    String? studentId,
+    String? facultyId,
+    String? batchYear,
+    String? course,
   }) async {
     try {
       final currentUser = await getCurrentUser();
@@ -236,6 +240,10 @@ class UnifiedUserService {
         phone: phone ?? currentUser.phone,
         facebookUrl: facebookUrl ?? currentUser.facebookUrl,
         instagramUrl: instagramUrl ?? currentUser.instagramUrl,
+        studentId: studentId ?? currentUser.studentId,
+        facultyId: facultyId ?? currentUser.facultyId,
+        batchYear: batchYear ?? currentUser.batchYear,
+        course: course ?? currentUser.course,
       );
 
       return await updateUser(updatedUser);

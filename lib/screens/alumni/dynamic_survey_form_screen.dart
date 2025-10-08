@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/survey_question_model.dart';
 import '../../models/survey_response_model.dart';
+import '../../models/user_role.dart';
 import '../../services/survey_question_service.dart';
 import '../../services/survey_response_service.dart';
 import '../../services/auth_service.dart';
@@ -208,8 +209,14 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
                     // Format phone number for display
                     userValue = InputValidators.formatPhilippinePhone(phone.toString());
                   }
-                } else if (title.contains('STUDENT ID') || title.contains('ID NUMBER')) {
-                  userValue = userProfile['studentId'];
+                } else if (title.contains('STUDENT ID') || title.contains('ID NUMBER') || title.contains('FACULTY ID')) {
+                  // Use facultyId for admins, studentId for alumni
+                  final userRole = UserRole.fromString(userProfile['role'] ?? 'alumni');
+                  if (userRole == UserRole.admin || userRole == UserRole.super_admin) {
+                    userValue = userProfile['facultyId'] ?? '';
+                  } else {
+                    userValue = userProfile['studentId'];
+                  }
                 } else if (title.contains('COMPANY') || title.contains('EMPLOYER')) {
                   userValue = userProfile['company'];
                 } else if (title.contains('POSITION') || title.contains('JOB TITLE') || title.contains('OCCUPATION')) {

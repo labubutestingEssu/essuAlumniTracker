@@ -277,7 +277,8 @@ class AdminInitializationService {
             lastName: nameParts['lastName']!,
             middleName: nameParts['middleName'],
             suffix: nameParts['suffix'],
-            studentId: adminData['studentId'],
+            studentId: '', // Admins don't have student IDs
+            facultyId: adminData['studentId'], // Use as faculty ID for admins
             course: adminData['position'],
             batchYear: DateTime.now().year.toString(),
             college: adminData['college'],

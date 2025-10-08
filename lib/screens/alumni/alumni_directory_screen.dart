@@ -1489,7 +1489,12 @@ class _AlumniDirectoryScreenState extends State<AlumniDirectoryScreen> {
               if (_isAdmin || isCurrentUser || alumni.batchYear.isNotEmpty)
                 _buildDetailItem('School Year', BatchYearUtils.batchYearToSchoolYear(alumni.batchYear)),
               if (_isAdmin || isCurrentUser)
-                _buildDetailItem(_getIdFieldLabel(alumni.role), alumni.studentId),
+                _buildDetailItem(
+                  _getIdFieldLabel(alumni.role), 
+                  alumni.role == UserRole.admin || alumni.role == UserRole.super_admin 
+                    ? (alumni.facultyId ?? '') 
+                    : alumni.studentId
+                ),
               if (_isAdmin || isCurrentUser)
                 _buildDetailItem('Email', alumni.email),
               if ((_isAdmin || isCurrentUser) && alumni.phone != null)

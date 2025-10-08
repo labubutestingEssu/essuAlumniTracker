@@ -9,6 +9,7 @@ class UserModel {
   final String? middleName;
   final String? suffix;
   final String studentId;
+  final String? facultyId; // For admin/college admin users
   final String course;
   final String batchYear;
   final String college;
@@ -40,6 +41,7 @@ class UserModel {
     this.middleName,
     this.suffix,
     required this.studentId,
+    this.facultyId,
     required this.course,
     required this.batchYear,
     required this.college,
@@ -68,6 +70,7 @@ class UserModel {
       'fullName': true,      // Always visible
       'email': false,        // Hidden by default
       'studentId': false,    // Hidden by default
+      'facultyId': false,    // Hidden by default
       'phone': false,        // Hidden by default
       'bio': true,           // Visible by default
       'course': true,        // Visible by default
@@ -82,6 +85,12 @@ class UserModel {
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     
+    final studentIdValue = data['studentId'] ?? '';
+    final facultyIdValue = data['facultyId'];
+    final roleValue = UserRole.fromString(data['role'] ?? 'alumni');
+    
+    print('📦 UserModel.fromFirestore - uid: ${doc.id}, role: $roleValue, studentId: "$studentIdValue", facultyId: "$facultyIdValue"');
+    
     return UserModel(
       uid: doc.id,
       email: data['email'] ?? '',
@@ -89,7 +98,8 @@ class UserModel {
       lastName: data['lastName'] ?? '',
       middleName: data['middleName'],
       suffix: data['suffix'],
-      studentId: data['studentId'] ?? '',
+      studentId: studentIdValue,
+      facultyId: facultyIdValue,
       course: data['course'] ?? '',
       batchYear: data['batchYear'] ?? '',
       college: data['college'] ?? '',
@@ -155,6 +165,7 @@ class UserModel {
     // Add optional fields only if they are not null
     if (middleName != null) map['middleName'] = middleName;
     if (suffix != null) map['suffix'] = suffix;
+    if (facultyId != null) map['facultyId'] = facultyId;
     if (profileImageUrl != null) map['profileImageUrl'] = profileImageUrl;
     if (currentOccupation != null) map['currentOccupation'] = currentOccupation;
     if (company != null) map['company'] = company;
@@ -188,6 +199,7 @@ class UserModel {
     String? middleName,
     String? suffix,
     String? studentId,
+    String? facultyId,
     String? course,
     String? batchYear,
     String? college,
@@ -217,6 +229,7 @@ class UserModel {
       middleName: middleName ?? this.middleName,
       suffix: suffix ?? this.suffix,
       studentId: studentId ?? this.studentId,
+      facultyId: facultyId ?? this.facultyId,
       course: course ?? this.course,
       batchYear: batchYear ?? this.batchYear,
       college: college ?? this.college,
@@ -262,6 +275,12 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    final studentIdValue = map['studentId'] ?? '';
+    final facultyIdValue = map['facultyId'];
+    final roleValue = UserRole.fromString(map['role'] ?? 'alumni');
+    
+    print('📦 UserModel.fromMap - uid: ${map['uid']}, role: $roleValue, studentId: "$studentIdValue", facultyId: "$facultyIdValue"');
+    
     return UserModel(
       uid: map['uid'] ?? '',
       email: map['email'] ?? '',
@@ -269,7 +288,8 @@ class UserModel {
       lastName: map['lastName'] ?? '',
       middleName: map['middleName'],
       suffix: map['suffix'],
-      studentId: map['studentId'] ?? '',
+      studentId: studentIdValue,
+      facultyId: facultyIdValue,
       course: map['course'] ?? '',
       batchYear: map['batchYear'] ?? '',
       college: map['college'] ?? '',

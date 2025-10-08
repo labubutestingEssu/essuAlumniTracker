@@ -321,12 +321,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Widget _buildPrivacyControls() {
+    // Use facultyId for admins, studentId for alumni
+    final idFieldKey = (_settings?.role == UserRole.admin || _settings?.role == UserRole.super_admin)
+      ? 'facultyId'
+      : 'studentId';
+      
     return Column(
       children: [
         _buildFieldVisibilityTile('Bio/About Me', 'bio'),
         _buildFieldVisibilityTile('Course/Program', 'course'),
         _buildFieldVisibilityTile('Batch Year', 'batchYear'),
-        _buildFieldVisibilityTile(_getIdFieldLabel(), 'studentId'),
+        _buildFieldVisibilityTile(_getIdFieldLabel(), idFieldKey),
         _buildFieldVisibilityTile('Email Address', 'email'),
         _buildFieldVisibilityTile('Phone Number', 'phone'),
         _buildFieldVisibilityTile('Current Occupation', 'currentOccupation'),

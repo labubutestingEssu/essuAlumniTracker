@@ -10,6 +10,7 @@ class AdminModel {
   final String? middleName;
   final String? suffix;
   final String studentId;
+  final String? facultyId; // For admin/college admin users
   final String course;
   final String batchYear;
   final String college;
@@ -46,6 +47,7 @@ class AdminModel {
     this.middleName,
     this.suffix,
     required this.studentId,
+    this.facultyId,
     required this.course,
     required this.batchYear,
     required this.college,
@@ -77,6 +79,7 @@ class AdminModel {
       'fullName': true,      // Always visible
       'email': true,         // Visible for admins
       'studentId': true,     // Visible for admins
+      'facultyId': true,     // Visible for admins
       'phone': true,         // Visible for admins
       'bio': true,           // Visible by default
       'course': true,        // Visible by default
@@ -99,6 +102,7 @@ class AdminModel {
       middleName: data['middleName'],
       suffix: data['suffix'],
       studentId: data['studentId'] ?? '',
+      facultyId: data['facultyId'],
       course: data['course'] ?? '',
       batchYear: data['batchYear'] ?? '',
       college: data['college'] ?? '',
@@ -169,6 +173,7 @@ class AdminModel {
     // Add optional fields only if they are not null
     if (middleName != null) map['middleName'] = middleName;
     if (suffix != null) map['suffix'] = suffix;
+    if (facultyId != null) map['facultyId'] = facultyId;
     if (profileImageUrl != null) map['profileImageUrl'] = profileImageUrl;
     if (currentOccupation != null) map['currentOccupation'] = currentOccupation;
     if (company != null) map['company'] = company;
@@ -203,6 +208,7 @@ class AdminModel {
     String? middleName,
     String? suffix,
     String? studentId,
+    String? facultyId,
     String? course,
     String? batchYear,
     String? college,
@@ -235,6 +241,7 @@ class AdminModel {
       middleName: middleName ?? this.middleName,
       suffix: suffix ?? this.suffix,
       studentId: studentId ?? this.studentId,
+      facultyId: facultyId ?? this.facultyId,
       course: course ?? this.course,
       batchYear: batchYear ?? this.batchYear,
       college: college ?? this.college,
@@ -292,6 +299,7 @@ class AdminModel {
       middleName: middleName,
       suffix: suffix,
       studentId: studentId,
+      facultyId: facultyId,
       course: course,
       batchYear: batchYear,
       college: college,
