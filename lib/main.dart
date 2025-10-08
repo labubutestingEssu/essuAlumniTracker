@@ -179,6 +179,7 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, _) {
           return MaterialApp(
             title: 'ESSU Alumni Tracker',
+            debugShowCheckedModeBanner: false,
             navigatorKey: NavigationService.navigatorKey,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
