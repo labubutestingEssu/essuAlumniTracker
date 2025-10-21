@@ -195,7 +195,7 @@ class DynamicQuestionWidget extends StatelessWidget {
           const SizedBox(height: 8),
           TextFormField(
             // Use a stable key for the bypassed state to prevent recreation on every keystroke
-            key: ValueKey('text_${question.id}_bypassed'),
+            key: ValueKey('text_${question.id}_bypassed_stable'),
             initialValue: textValue,
             decoration: InputDecoration(
               hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
@@ -264,42 +264,99 @@ class DynamicQuestionWidget extends StatelessWidget {
       );
     }
     
-    // Default text input for non-auto-fill fields or when no auto-fill value
-    // Check if this is a phone number field
-    final isPhoneField = title.contains('PHONE') || title.contains('MOBILE') || title.contains('CONTACT NUMBER');
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildQuestionTitle(),
-        const SizedBox(height: 8),
-        TextFormField(
-          key: ValueKey('text_${question.id}'),
-          initialValue: currentValue?.toString() ?? '',
-          decoration: InputDecoration(
-            hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
-            border: const OutlineInputBorder(),
-            errorText: errorText,
-            prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
-          ),
-          maxLength: question.configuration['maxLength'] ?? 255,
-          onChanged: (value) {
-            // For auto-fill fields that start empty, mark as bypassed when user types
-            // This prevents them from switching to disabled state after first character
-            if (isAutoFillField) {
-              onChanged({
-                'value': value,
-                'bypassed': true,
-                'originalValue': '',
-              });
-            } else {
-              onChanged(value);
-            }
-          },
-          validator: _getTextValidator(),
-          keyboardType: _getKeyboardType(),
-          inputFormatters: _getInputFormatters(),
-        ),
+     // Default text input for non-auto-fill fields or when no auto-fill value
+     // Check if this is a phone number field
+     final isPhoneField = title.contains('PHONE') || title.contains('MOBILE') || title.contains('CONTACT NUMBER');
+     
+     // For auto-fill fields that are empty, pre-emptively set them to bypassed mode
+     // This prevents focus loss when user starts typing
+     if (isAutoFillField && actualValue.isEmpty) {
+       return Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           _buildQuestionTitle(),
+           const SizedBox(height: 8),
+           TextFormField(
+             key: ValueKey('text_${question.id}_bypassed_stable'),
+             initialValue: '',
+             decoration: InputDecoration(
+               hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
+               border: const OutlineInputBorder(),
+               errorText: errorText,
+               prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
+             ),
+             maxLength: question.configuration['maxLength'] ?? 255,
+             onChanged: (value) {
+               onChanged({
+                 'value': value,
+                 'bypassed': true,
+                 'originalValue': '',
+               });
+             },
+             validator: _getTextValidator(),
+             keyboardType: _getKeyboardType(),
+             inputFormatters: _getInputFormatters(),
+           ),
+           const SizedBox(height: 8),
+           if (isPhoneField) ...[
+             Container(
+               padding: const EdgeInsets.all(12),
+               decoration: BoxDecoration(
+                 color: Colors.blue.shade50,
+                 border: Border.all(color: Colors.blue.shade200),
+                 borderRadius: BorderRadius.circular(8),
+               ),
+               child: Row(
+                 children: [
+                   Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
+                   const SizedBox(width: 8),
+                   Expanded(
+                     child: Text(
+                       'Format: 09XX XXX XXXX (11 digits, Philippine mobile number)',
+                       style: TextStyle(
+                         fontSize: 13,
+                         color: Colors.blue.shade900,
+                         fontWeight: FontWeight.w500,
+                       ),
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+           ] else ...[
+             Text(
+               'Manual entry mode.',
+               style: TextStyle(
+                 fontSize: 12,
+                 color: Colors.orange.shade600,
+                 fontStyle: FontStyle.italic,
+               ),
+             ),
+           ],
+         ],
+       );
+     }
+     
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         _buildQuestionTitle(),
+         const SizedBox(height: 8),
+         TextFormField(
+           key: ValueKey('text_${question.id}_editable'),
+           initialValue: currentValue?.toString() ?? '',
+           decoration: InputDecoration(
+             hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
+             border: const OutlineInputBorder(),
+             errorText: errorText,
+             prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
+           ),
+           maxLength: question.configuration['maxLength'] ?? 255,
+           onChanged: onChanged,
+           validator: _getTextValidator(),
+           keyboardType: _getKeyboardType(),
+           inputFormatters: _getInputFormatters(),
+         ),
         if (isPhoneField) ...[
           const SizedBox(height: 8),
           Container(
