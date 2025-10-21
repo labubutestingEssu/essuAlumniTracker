@@ -468,7 +468,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           DropdownButtonFormField<String>(
             value: _selectedBatch,
             decoration: const InputDecoration(
-              labelText: 'School Year',
+              labelText: 'Academic Year',
               prefixIcon: Icon(Icons.calendar_today_outlined),
               border: OutlineInputBorder(),
             ),
@@ -485,7 +485,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please select your school year';
+                return 'Please select your academic year';
               }
               return null;
             },

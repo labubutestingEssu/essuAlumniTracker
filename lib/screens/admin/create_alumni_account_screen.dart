@@ -614,7 +614,7 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                       DropdownButtonFormField<String>(
                         value: _selectedBatch,
                         decoration: const InputDecoration(
-                          labelText: 'School Year',
+                          labelText: 'Academic Year',
                           border: OutlineInputBorder(),
                         ),
                         items: _schoolYearDisplay.map((schoolYear) {
@@ -630,7 +630,7 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                         },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please select school year';
+                            return 'Please select academic year';
                           }
                           return null;
                         },

@@ -1435,7 +1435,7 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
                       items: const [
                         DropdownMenuItem(
                           value: 'batchYears',
-                          child: Text('School Years (2020-2021 to current)'),
+                          child: Text('Academic Years (2020-2021 to current)'),
                         ),
                         DropdownMenuItem(
                           value: 'courses',

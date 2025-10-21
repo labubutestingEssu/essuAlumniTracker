@@ -872,7 +872,7 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                                 showSearchBox: true,
                                 searchFieldProps: const TextFieldProps(
                                   decoration: InputDecoration(
-                                    hintText: 'Search school year...',
+                                    hintText: 'Search academic year...',
                                     prefixIcon: Icon(Icons.search),
                                   ),
                                 ),
@@ -880,10 +880,10 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              items: ['All School Years', ..._schoolYearDisplay.reversed],
+                              items: ['All Academic Years', ..._schoolYearDisplay.reversed],
                               dropdownDecoratorProps: const DropDownDecoratorProps(
                                 dropdownSearchDecoration: InputDecoration(
-                                  labelText: 'Select School Year',
+                                  labelText: 'Select Academic Year',
                                   border: OutlineInputBorder(),
                                   filled: true,
                                   fillColor: Colors.white,
@@ -893,14 +893,14 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                               ),
                               onChanged: (value) {
                                 setState(() {
-                                  _selectedBatchYear = value == 'All School Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
+                                  _selectedBatchYear = value == 'All Academic Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
                                 });
                                 _loadReportData();
                               },
-                              selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All School Years',
+                              selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All Academic Years',
                               dropdownBuilder: (context, selectedItem) {
                                 return Text(
-                                  selectedItem ?? 'All School Years',
+                                  selectedItem ?? 'All Academic Years',
                                   style: const TextStyle(fontSize: 16),
                                 );
                               },
@@ -964,7 +964,7 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                               showSearchBox: true,
                               searchFieldProps: const TextFieldProps(
                                 decoration: InputDecoration(
-                                  hintText: 'Search school year...',
+                                  hintText: 'Search academic year...',
                                   prefixIcon: Icon(Icons.search),
                                 ),
                               ),
@@ -972,10 +972,10 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            items: ['All School Years', ..._schoolYearDisplay.reversed],
+                            items: ['All Academic Years', ..._schoolYearDisplay.reversed],
                             dropdownDecoratorProps: const DropDownDecoratorProps(
                               dropdownSearchDecoration: InputDecoration(
-                                labelText: 'Select School Year',
+                                labelText: 'Select Academic Year',
                                 border: OutlineInputBorder(),
                                 filled: true,
                                 fillColor: Colors.white,
@@ -985,14 +985,14 @@ class _CollegeReportsScreenState extends State<CollegeReportsScreen> {
                             ),
                             onChanged: (value) {
                               setState(() {
-                                _selectedBatchYear = value == 'All School Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
+                                _selectedBatchYear = value == 'All Academic Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
                               });
                               _loadReportData();
                             },
-                              selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All School Years',
+                              selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All Academic Years',
                               dropdownBuilder: (context, selectedItem) {
                                 return Text(
-                                  selectedItem ?? 'All School Years',
+                                  selectedItem ?? 'All Academic Years',
                                 style: const TextStyle(fontSize: 16),
                               );
                             },

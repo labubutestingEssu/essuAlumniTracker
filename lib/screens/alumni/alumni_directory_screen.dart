@@ -799,15 +799,15 @@ class _AlumniDirectoryScreenState extends State<AlumniDirectoryScreen> {
         showSearchBox: true,
         searchFieldProps: TextFieldProps(
           decoration: InputDecoration(
-            hintText: 'Search school year...',
+            hintText: 'Search academic year...',
             prefixIcon: Icon(Icons.search),
           ),
         ),
       ),
-      items: ['All School Years', ..._schoolYearDisplay],
+      items: ['All Academic Years', ..._schoolYearDisplay],
       dropdownDecoratorProps: const DropDownDecoratorProps(
         dropdownSearchDecoration: InputDecoration(
-          labelText: 'School Year',
+          labelText: 'Academic Year',
           border: OutlineInputBorder(),
           filled: true,
           fillColor: Colors.white,
@@ -816,14 +816,14 @@ class _AlumniDirectoryScreenState extends State<AlumniDirectoryScreen> {
       ),
       onChanged: (value) {
         setState(() {
-          _selectedBatchYear = value == 'All School Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
+          _selectedBatchYear = value == 'All Academic Years' ? null : BatchYearUtils.schoolYearToBatchYear(value ?? '');
         });
         _fetchAlumni();
       },
-      selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All School Years',
+      selectedItem: _selectedBatchYear != null ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!) : 'All Academic Years',
       dropdownBuilder: (context, selectedItem) {
         return Text(
-          selectedItem ?? 'All School Years',
+          selectedItem ?? 'All Academic Years',
           style: const TextStyle(fontSize: 16),
         );
       },
@@ -1234,7 +1234,7 @@ class _AlumniDirectoryScreenState extends State<AlumniDirectoryScreen> {
                         if (alumni.batchYear.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(
-                            'School Year ${BatchYearUtils.batchYearToSchoolYear(alumni.batchYear)}',
+                            'Academic Year ${BatchYearUtils.batchYearToSchoolYear(alumni.batchYear)}',
                             style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 13,
@@ -1487,7 +1487,7 @@ class _AlumniDirectoryScreenState extends State<AlumniDirectoryScreen> {
               if ((_isAdmin || isCurrentUser || alumni.course.isNotEmpty) && alumni.role != UserRole.super_admin)
                 _buildDetailItem('Course', alumni.course),
               if (_isAdmin || isCurrentUser || alumni.batchYear.isNotEmpty)
-                _buildDetailItem('School Year', BatchYearUtils.batchYearToSchoolYear(alumni.batchYear)),
+                _buildDetailItem('Academic Year', BatchYearUtils.batchYearToSchoolYear(alumni.batchYear)),
               if (_isAdmin || isCurrentUser)
                 _buildDetailItem(
                   _getIdFieldLabel(alumni.role), 

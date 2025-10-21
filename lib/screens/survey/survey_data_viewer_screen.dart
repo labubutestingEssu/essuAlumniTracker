@@ -415,7 +415,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
   Widget _buildBatchYearDropdown() {
     return DropdownButtonFormField<String>(
       decoration: const InputDecoration(
-        labelText: 'School Year',
+        labelText: 'Academic Year',
         border: OutlineInputBorder(),
         filled: true,
         fillColor: Colors.white,
@@ -424,7 +424,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
       items: [
         const DropdownMenuItem<String>(
           value: null,
-          child: Text('All School Years'),
+          child: Text('All Academic Years'),
         ),
         ..._schoolYearDisplay.map((schoolYear) => DropdownMenuItem<String>(
           value: BatchYearUtils.schoolYearToBatchYear(schoolYear),
@@ -600,7 +600,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${response.course} - School Year ${BatchYearUtils.batchYearToSchoolYear(response.batchYear)}'),
+            Text('${response.course} - Academic Year ${BatchYearUtils.batchYearToSchoolYear(response.batchYear)}'),
             Text(response.college),
             Text(
               response.isCompleted 
@@ -807,7 +807,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
         'Full Name',
         'College',
         'Program',
-        'School Year',
+        'Academic Year',
         'Status',
         'Created At',
         'Updated At',

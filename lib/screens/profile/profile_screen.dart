@@ -1330,12 +1330,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 16),
                     if (_shouldShowStudentFields())
                       _buildTextField(
-                        label: 'School Year',
+                        label: 'Academic Year',
                         controller: _batchYearController,
                         enabled: _isEditing,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your school year';
+                            return 'Please enter your academic year';
                           }
                           return null;
                         },
@@ -1538,7 +1538,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Divider(),
             if (_shouldShowStudentFields() && _shouldShowEducationSection())
               SwitchListTile(
-                title: const Text('School Year'),
+                title: const Text('Academic Year'),
                 subtitle: const Text('Graduation year is visible to other alumni'),
                 value: fieldVisibility['batchYear'] ?? true,
                 onChanged: (bool value) async {
