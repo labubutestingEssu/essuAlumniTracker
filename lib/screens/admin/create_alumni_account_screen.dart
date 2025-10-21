@@ -203,8 +203,8 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
     });
   }
 
-  // Helper method to check if selected role needs student fields
-  bool _shouldShowStudentFields() {
+  // Helper method to check if ID field should be shown (both alumni and admin need IDs)
+  bool _shouldShowIdField() {
     return _selectedRole == UserRole.alumni || _selectedRole == UserRole.admin;
   }
 
@@ -221,6 +221,16 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
   // Helper method to check if selected role should show college/course fields
   bool _shouldShowCollegeCourseFields() {
     return _selectedRole != UserRole.super_admin;
+  }
+  
+  // Helper method to check if Program field should be shown (alumni only, not admin)
+  bool _shouldShowProgramField() {
+    return _selectedRole == UserRole.alumni;
+  }
+  
+  // Helper method to check if Academic Year field should be shown (alumni only, not admin)
+  bool _shouldShowAcademicYearField() {
+    return _selectedRole == UserRole.alumni;
   }
 
   Future<void> _createAccount() async {
@@ -253,8 +263,12 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
           suffix: _suffixController.text.trim().isEmpty ? null : _suffixController.text.trim(),
           studentId: (_selectedRole == UserRole.alumni) ? _studentIdController.text.trim() : '',
           facultyId: (_selectedRole == UserRole.admin || _selectedRole == UserRole.super_admin) ? _studentIdController.text.trim() : null,
-          course: _selectedRole == UserRole.super_admin ? 'SUPERADMIN' : (_selectedCourse ?? ''),
-          batchYear: _shouldShowStudentFields() ? (_selectedBatch ?? '') : '',
+          course: _selectedRole == UserRole.super_admin 
+              ? 'SUPERADMIN' 
+              : (_selectedRole == UserRole.admin 
+                  ? 'ADMIN' 
+                  : (_selectedCourse ?? '')),
+          batchYear: _selectedRole == UserRole.alumni ? (_selectedBatch ?? '') : '',
           college: _selectedRole == UserRole.super_admin ? 'SUPERADMIN' : (_selectedCollege ?? ''),
           phone: _phoneController.text.trim(),
           facebookUrl: _facebookUrlController.text.trim(),
@@ -470,7 +484,7 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                       validator: InputValidators.validatePassword,
                     ),
                     const SizedBox(height: 16),
-                    if (_shouldShowStudentFields())
+                    if (_shouldShowIdField())
                       TextFormField(
                         controller: _studentIdController,
                         decoration: InputDecoration(
@@ -479,7 +493,8 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                         ),
                         validator: (value) => InputValidators.validateId(value, _getIdFieldLabel().toLowerCase()),
                       ),
-                    const SizedBox(height: 16),
+                    if (_shouldShowIdField())
+                      const SizedBox(height: 16),
                     FutureBuilder<UserRole?>(
                       future: _getCurrentUserRole(),
                       builder: (context, snapshot) {
@@ -524,6 +539,11 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedRole = value ?? (userRole.isSuperAdmin ? UserRole.admin : UserRole.alumni);
+                                  // Reset course and batch year when switching to admin role
+                                  if (_selectedRole == UserRole.admin) {
+                                    _selectedCourse = null;
+                                    _selectedBatch = null;
+                                  }
                                 });
                               },
                             ),
@@ -557,54 +577,56 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                             : const Text('No college assigned'),
                       ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _selectedCourse,
-                        decoration: const InputDecoration(
-                          labelText: 'Program',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _coursesLoading
-                            ? [
-                                const DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text('Loading programs...'),
-                                ),
-                              ]
-                            : (() {
-                                final filteredCourses = _courses.where((course) => _selectedCollege == null || course.college == _selectedCollege).toList();
-                                final uniqueCourseNames = <String>{};
-                                final uniqueCourses = <Course>[];
-                                for (final course in filteredCourses) {
-                                  if (!uniqueCourseNames.contains(course.name)) {
-                                    uniqueCourseNames.add(course.name);
-                                    uniqueCourses.add(course);
+                      if (_shouldShowProgramField())
+                        DropdownButtonFormField<String>(
+                          value: _selectedCourse,
+                          decoration: const InputDecoration(
+                            labelText: 'Program',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _coursesLoading
+                              ? [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('Loading programs...'),
+                                  ),
+                                ]
+                              : (() {
+                                  final filteredCourses = _courses.where((course) => _selectedCollege == null || course.college == _selectedCollege).toList();
+                                  final uniqueCourseNames = <String>{};
+                                  final uniqueCourses = <Course>[];
+                                  for (final course in filteredCourses) {
+                                    if (!uniqueCourseNames.contains(course.name)) {
+                                      uniqueCourseNames.add(course.name);
+                                      uniqueCourses.add(course);
+                                    }
                                   }
-                                }
-                                debugPrint('[DEBUG] Program dropdown: uniqueCourses=' + uniqueCourses.map((c) => c.name).join(', '));
-                                return uniqueCourses
-                                    .map((course) => DropdownMenuItem<String>(
-                                          value: course.name,
-                                          child: Text(course.name),
-                                        ))
-                                    .toList();
-                              })(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCourse = value;
-                            debugPrint('[DEBUG] Course changed: selectedCourse=$_selectedCourse');
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please select course';
-                          }
-                          return null;
-                        },
-                        isExpanded: true,
-                      ),
+                                  debugPrint('[DEBUG] Program dropdown: uniqueCourses=' + uniqueCourses.map((c) => c.name).join(', '));
+                                  return uniqueCourses
+                                      .map((course) => DropdownMenuItem<String>(
+                                            value: course.name,
+                                            child: Text(course.name),
+                                          ))
+                                      .toList();
+                                })(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCourse = value;
+                              debugPrint('[DEBUG] Course changed: selectedCourse=$_selectedCourse');
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please select course';
+                            }
+                            return null;
+                          },
+                          isExpanded: true,
+                        ),
+                      if (_shouldShowProgramField())
+                        const SizedBox(height: 16),
                     ],
-                    const SizedBox(height: 16),
-                    if (_shouldShowStudentFields())
+                    if (_shouldShowAcademicYearField())
                       DropdownButtonFormField<String>(
                         value: _selectedBatch,
                         decoration: const InputDecoration(
@@ -629,7 +651,8 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                           return null;
                         },
                       ),
-                    const SizedBox(height: 16),
+                    if (_shouldShowAcademicYearField())
+                      const SizedBox(height: 16),
                     TextFormField(
                       controller: _phoneController,
                       decoration: const InputDecoration(
