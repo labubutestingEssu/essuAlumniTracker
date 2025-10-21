@@ -536,16 +536,18 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
                                   ),
                                 ],
                               ],
-                              onChanged: (value) {
+                              // Disable dropdown for regular admins since they can only create alumni
+                              onChanged: userRole.isSuperAdmin ? (value) {
                                 setState(() {
-                                  _selectedRole = value ?? (userRole.isSuperAdmin ? UserRole.admin : UserRole.alumni);
+                                  _selectedRole = value ?? UserRole.admin;
                                   // Reset course and batch year when switching to admin role
                                   if (_selectedRole == UserRole.admin) {
                                     _selectedCourse = null;
                                     _selectedBatch = null;
                                   }
                                 });
-                              },
+                              } : null,
+                              disabledHint: Text(UserRole.alumni.toDisplayString()),
                             ),
                             const SizedBox(height: 16),
                           ],

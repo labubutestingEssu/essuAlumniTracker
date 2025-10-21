@@ -321,17 +321,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Widget _buildPrivacyControls() {
-    // Use facultyId for admins, studentId for alumni
-    final idFieldKey = (_settings?.role == UserRole.admin || _settings?.role == UserRole.super_admin)
-      ? 'facultyId'
-      : 'studentId';
+    // Determine which ID field to show based on role
+    final userRole = _settings?.role;
+    final shouldShowIdField = userRole == UserRole.alumni || userRole == UserRole.admin;
+    
+    // Use facultyId for college admin, studentId for alumni
+    final idFieldKey = userRole == UserRole.admin ? 'facultyId' : 'studentId';
       
     return Column(
       children: [
         _buildFieldVisibilityTile('Bio/About Me', 'bio'),
         _buildFieldVisibilityTile('Course/Program', 'course'),
         _buildFieldVisibilityTile('Batch Year', 'batchYear'),
-        _buildFieldVisibilityTile(_getIdFieldLabel(), idFieldKey),
+        // Only show ID field visibility for alumni (Student ID) and college admin (Faculty ID)
+        // Super admins don't need ID visibility toggle
+        if (shouldShowIdField)
+          _buildFieldVisibilityTile(_getIdFieldLabel(), idFieldKey),
         _buildFieldVisibilityTile('Email Address', 'email'),
         _buildFieldVisibilityTile('Phone Number', 'phone'),
         _buildFieldVisibilityTile('Current Occupation', 'currentOccupation'),
