@@ -168,8 +168,8 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
 
   // Helper method to auto-fill smart defaults based on user input
   void _autoFillDefaults() {
-    // Auto-generate student ID based on current year if empty
-    if (_studentIdController.text.isEmpty && _shouldShowStudentFields()) {
+    // Auto-generate student ID based on current year if empty (only for alumni, NOT for faculty)
+    if (_studentIdController.text.isEmpty && _selectedRole == UserRole.alumni) {
       final currentYear = DateTime.now().year;
       _studentIdController.text = '$currentYear-';
     }
