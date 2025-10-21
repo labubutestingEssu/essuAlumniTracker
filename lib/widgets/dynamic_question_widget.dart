@@ -116,7 +116,8 @@ class DynamicQuestionWidget extends StatelessWidget {
                            title.contains('POSITION') || title.contains('JOB TITLE') || 
                            title.contains('OCCUPATION') || title.contains('LOCATION') || 
                            title.contains('ADDRESS') || title.contains('BIO') || 
-                           title.contains('ABOUT');
+                           title.contains('ABOUT') ||
+                           title.contains('EASTERN SAMAR STATE UNIVERSITY');
     
     // Check if bypass is enabled for this field
     final isBypassed = currentValue is Map && currentValue['bypassed'] == true;
@@ -181,6 +182,9 @@ class DynamicQuestionWidget extends StatelessWidget {
     
     // If bypassed, show normal text input
     if (isAutoFillField && isBypassed) {
+      // Check if this is a phone number field
+      final isPhoneField = title.contains('PHONE') || title.contains('MOBILE') || title.contains('CONTACT NUMBER');
+      
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -190,9 +194,10 @@ class DynamicQuestionWidget extends StatelessWidget {
             key: ValueKey('text_${question.id}_bypassed'),
             initialValue: currentValue is Map ? currentValue['value']?.toString() ?? '' : currentValue?.toString() ?? '',
             decoration: InputDecoration(
-              hintText: question.configuration['placeholder'] ?? '',
+              hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
               border: const OutlineInputBorder(),
               errorText: errorText,
+              prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
               suffixIcon: IconButton(
                 icon: const Icon(Icons.undo),
                 onPressed: () {
@@ -215,20 +220,50 @@ class DynamicQuestionWidget extends StatelessWidget {
             keyboardType: _getKeyboardType(),
             inputFormatters: _getInputFormatters(),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Manual entry mode. Click undo to restore auto-filled value.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.orange.shade600,
-              fontStyle: FontStyle.italic,
+          const SizedBox(height: 8),
+          if (isPhoneField) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                border: Border.all(color: Colors.blue.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Format: 09XX XXX XXXX (11 digits, Philippine mobile number)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue.shade900,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            Text(
+              'Manual entry mode. Click undo icon to restore auto-filled value.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.orange.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       );
     }
     
     // Default text input for non-auto-fill fields or when no auto-fill value
+    // Check if this is a phone number field
+    final isPhoneField = title.contains('PHONE') || title.contains('MOBILE') || title.contains('CONTACT NUMBER');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -238,9 +273,10 @@ class DynamicQuestionWidget extends StatelessWidget {
           key: ValueKey('text_${question.id}'),
           initialValue: currentValue?.toString() ?? '',
           decoration: InputDecoration(
-            hintText: question.configuration['placeholder'] ?? '',
+            hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
             border: const OutlineInputBorder(),
             errorText: errorText,
+            prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
           ),
           maxLength: question.configuration['maxLength'] ?? 255,
           onChanged: onChanged,
@@ -248,6 +284,33 @@ class DynamicQuestionWidget extends StatelessWidget {
           keyboardType: _getKeyboardType(),
           inputFormatters: _getInputFormatters(),
         ),
+        if (isPhoneField) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              border: Border.all(color: Colors.blue.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Format: 09XX XXX XXXX (11 digits, Philippine mobile number)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.blue.shade900,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

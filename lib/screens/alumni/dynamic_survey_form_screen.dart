@@ -225,6 +225,9 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
                   userValue = userProfile['location'];
                 } else if (title.contains('BIO') || title.contains('ABOUT')) {
                   userValue = userProfile['bio'];
+                } else if (title.contains('EASTERN SAMAR STATE UNIVERSITY')) {
+                  // Hardcoded default value for ESSU campus field
+                  userValue = 'BORONGAN (Main Campus)';
                 }
               }
               
