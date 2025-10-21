@@ -1214,34 +1214,61 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
     });
   }
 
-  void _deleteBatchQuestion(int index) {
+  Future<void> _deleteBatchQuestion(int index) async {
     final question = _editableQuestions[index];
     
-    showDialog(
+    // Check if this is an existing question or a new one
+    final isNewQuestion = question.id.isEmpty || question.id.startsWith('new_');
+    
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Question'),
-        content: Text('Are you sure you want to delete "${question.title}"?'),
+        content: Text(
+          isNewQuestion
+              ? 'Are you sure you want to remove "${question.title.isEmpty ? 'this new question' : question.title}"?'
+              : 'Are you sure you want to permanently delete "${question.title}" from the database?\n\nThis action cannot be undone.'
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _editableQuestions.removeAt(index);
-                _controllers[question.id]?.forEach((key, controller) => controller.dispose());
-                _controllers.remove(question.id);
-              });
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(isNewQuestion ? 'Remove' : 'Delete Permanently'),
           ),
         ],
       ),
     );
+    
+    if (confirmed == true) {
+      // If this is an existing question, delete it from the database
+      if (!isNewQuestion) {
+        try {
+          print('[BATCH DELETE] Starting delete process for question: ${question.id} - ${question.title}');
+          await _questionService.permanentlyDeleteQuestion(question.id);
+          print('[BATCH DELETE] Delete completed from database');
+          _showSuccessSnackBar('Question permanently deleted from database');
+        } catch (e) {
+          print('[BATCH DELETE] Error in delete process: $e');
+          _showErrorSnackBar('Error deleting question: $e');
+          return; // Don't remove from local list if database delete failed
+        }
+      }
+      
+      // Remove from local batch edit list and dispose controllers
+      setState(() {
+        _editableQuestions.removeAt(index);
+        _controllers[question.id]?.forEach((key, controller) => controller.dispose());
+        _controllers.remove(question.id);
+      });
+      
+      if (isNewQuestion) {
+        _showSuccessSnackBar('New question removed from batch');
+      }
+    }
   }
 
   void _reorderBatchQuestions(int oldIndex, int newIndex) {
