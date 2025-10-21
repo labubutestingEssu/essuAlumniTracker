@@ -344,11 +344,72 @@ class DynamicQuestionWidget extends StatelessWidget {
     // Helper function to check if option contains "other"
     bool isOtherOption(String option) => option.toLowerCase().contains('other');
     
-    // Get current selected value
+    // Check if this is a "Year Graduated" auto-fill field
+    final title = question.title.toUpperCase();
+    final isYearGraduatedField = title.contains('YEAR') && title.contains('GRADUATED');
+    final isBypassed = currentValue is Map && currentValue['bypassed'] == true;
+    
+    // Get current selected value (handle both string and Map formats)
     String? selectedValue = currentValue is Map 
         ? (currentValue as Map)['value']?.toString()
         : currentValue?.toString();
     
+    // If it's a Year Graduated auto-fill field and not bypassed, show disabled field with bypass option
+    if (isYearGraduatedField && !isBypassed && selectedValue != null && selectedValue.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey.shade50,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedValue,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      // Enable bypass mode
+                      onChanged({
+                        'value': '',
+                        'bypassed': true,
+                        'originalValue': selectedValue,
+                      });
+                    },
+                    child: const Text('Bypass'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Auto-filled from your profile. Click "Bypass" to select a different year.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Normal single choice display (for non-auto-fill fields or when bypassed)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -361,7 +422,18 @@ class DynamicQuestionWidget extends StatelessWidget {
                 title: Text(option),
                 value: option,
                 groupValue: selectedValue,
-                onChanged: (value) => onChanged(value),
+                onChanged: (value) {
+                  // If it's a Year Graduated field in bypass mode, preserve the bypass structure
+                  if (isYearGraduatedField && isBypassed) {
+                    onChanged({
+                      'value': value,
+                      'bypassed': true,
+                      'originalValue': currentValue is Map ? currentValue['originalValue'] : currentValue,
+                    });
+                  } else {
+                    onChanged(value);
+                  }
+                },
               ),
               // Show text input if this is an "Other" option and it's selected
               if (isOtherOption(option) && selectedValue == option) ...[
@@ -387,6 +459,37 @@ class DynamicQuestionWidget extends StatelessWidget {
             ],
           );
         }).toList(),
+        // Show undo button if in bypass mode for Year Graduated
+        if (isYearGraduatedField && isBypassed) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 8),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Manual selection mode.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade600,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.undo, size: 16),
+                  label: const Text('Restore'),
+                  onPressed: () {
+                    // Restore auto-filled value
+                    final originalValue = currentValue is Map ? currentValue['originalValue'] ?? '' : '';
+                    onChanged(originalValue);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
         if (errorText != null)
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 8),

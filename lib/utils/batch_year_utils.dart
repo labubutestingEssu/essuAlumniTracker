@@ -11,10 +11,14 @@
 class BatchYearUtils {
   /// Generate batch years from 2020 to current year (inclusive)
   /// This is the standard range used across the app
+  /// Returns academic year format (e.g., "2020-2021", "2021-2022")
   static List<String> generateBatchYears() {
     return List.generate(
       (DateTime.now().year - 2020 + 1),
-      (index) => (2020 + index).toString(),
+      (index) {
+        final year = 2020 + index;
+        return '$year-${year + 1}';
+      },
     );
   }
 

@@ -242,6 +242,13 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
                 }
               }
               
+              // Radio/Single choice fields for Year Graduated
+              else if (question.type == QuestionType.singleChoice) {
+                if (title.contains('YEAR') && title.contains('GRADUATED')) {
+                  userValue = userProfile['batchYear'];
+                }
+              }
+              
               // Set the value if we found a match
               if (userValue != null && userValue.toString().isNotEmpty) {
                 _responses[question.id] = userValue;
@@ -261,7 +268,8 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
                 title.contains('SUFFIX') || title.contains('EMAIL') || title.contains('PHONE') ||
                 title.contains('STUDENT ID') || title.contains('COMPANY') || title.contains('POSITION') ||
                 title.contains('LOCATION') || title.contains('BIO') || title.contains('COLLEGE') ||
-                title.contains('COURSE') || title.contains('BATCH') || title.contains('YEAR')) {
+                title.contains('COURSE') || title.contains('BATCH') || title.contains('YEAR') ||
+                (title.contains('YEAR') && title.contains('GRADUATED'))) {
               print('  ${question.id} (${question.title}): $response');
             }
           }
