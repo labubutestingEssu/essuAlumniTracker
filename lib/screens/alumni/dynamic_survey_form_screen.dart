@@ -976,8 +976,10 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
       
       widgets.add(
         Padding(
+          key: ValueKey('question_wrapper_${question.id}'),
           padding: const EdgeInsets.only(bottom: 24.0),
           child: DynamicQuestionWidget(
+            key: ValueKey('question_widget_${question.id}'),
             question: question,
             currentValue: _responses[question.id],
             onChanged: (value) async {

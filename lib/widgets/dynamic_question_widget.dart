@@ -185,14 +185,18 @@ class DynamicQuestionWidget extends StatelessWidget {
       // Check if this is a phone number field
       final isPhoneField = title.contains('PHONE') || title.contains('MOBILE') || title.contains('CONTACT NUMBER');
       
+      // Get the current text value from the map structure
+      final textValue = currentValue is Map ? currentValue['value']?.toString() ?? '' : '';
+      
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildQuestionTitle(),
           const SizedBox(height: 8),
           TextFormField(
+            // Use a stable key for the bypassed state to prevent recreation on every keystroke
             key: ValueKey('text_${question.id}_bypassed'),
-            initialValue: currentValue is Map ? currentValue['value']?.toString() ?? '' : currentValue?.toString() ?? '',
+            initialValue: textValue,
             decoration: InputDecoration(
               hintText: isPhoneField ? '09XX XXX XXXX' : (question.configuration['placeholder'] ?? ''),
               border: const OutlineInputBorder(),
@@ -279,7 +283,19 @@ class DynamicQuestionWidget extends StatelessWidget {
             prefixIcon: isPhoneField ? const Icon(Icons.phone_android) : null,
           ),
           maxLength: question.configuration['maxLength'] ?? 255,
-          onChanged: onChanged,
+          onChanged: (value) {
+            // For auto-fill fields that start empty, mark as bypassed when user types
+            // This prevents them from switching to disabled state after first character
+            if (isAutoFillField) {
+              onChanged({
+                'value': value,
+                'bypassed': true,
+                'originalValue': '',
+              });
+            } else {
+              onChanged(value);
+            }
+          },
           validator: _getTextValidator(),
           keyboardType: _getKeyboardType(),
           inputFormatters: _getInputFormatters(),
