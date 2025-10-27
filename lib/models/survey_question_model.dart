@@ -439,7 +439,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'essu_campus',
         title: 'EASTERN SAMAR STATE UNIVERSITY',
-        type: QuestionType.singleChoice,
+        type: QuestionType.textInput,
         isRequired: true,
         order: 17,
         sectionId: 'section_education',

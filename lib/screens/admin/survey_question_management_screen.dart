@@ -22,6 +22,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   bool _isLoading = false;
   bool _isBatchEditMode = false;
   bool _isSaving = false;
+  bool _isDeleting = false;
   String _searchQuery = '';
   QuestionType? _filterType;
   
@@ -30,6 +31,9 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   
   // Scroll controller for batch edit view
   final ScrollController _batchEditScrollController = ScrollController();
+  
+  // Multi-select state for batch delete
+  Set<String> _selectedQuestionIds = {};
 
   @override
   void initState() {
@@ -77,6 +81,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
         _disposeControllers();
         _controllers.clear();
         _editableQuestions.clear();
+        _selectedQuestionIds.clear();
       }
     });
   }
@@ -107,25 +112,50 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
         NavigationService.navigateToWithReplacement(AppRoutes.alumniDirectory);
         return false;
       },
-      child: ResponsiveScreenWrapper(
-        title: 'Survey Question Management',
-        customAppBar: const CustomAppBar(
-          title: 'Survey Questions',
-          showBackButton: false,
-        ),
-                 body: Column(
-           children: [
-             _buildHeader(isDesktop),
-             if (!_isBatchEditMode) _buildFilters(),
-             Expanded(
-               child: _isLoading
-                   ? const Center(child: CircularProgressIndicator())
-                   : _isBatchEditMode
-                       ? _buildBatchEditView()
-                       : _buildQuestionsList(),
-             ),
-           ],
-         ),
+      child: Stack(
+        children: [
+          ResponsiveScreenWrapper(
+            title: 'Survey Question Management',
+            customAppBar: const CustomAppBar(
+              title: 'Survey Questions',
+              showBackButton: false,
+            ),
+            body: Column(
+              children: [
+                _buildHeader(isDesktop),
+                if (!_isBatchEditMode) _buildFilters(),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _isBatchEditMode
+                          ? _buildBatchEditView()
+                          : _buildQuestionsList(),
+                ),
+              ],
+            ),
+          ),
+          if (_isDeleting)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Deleting questions...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -200,6 +230,41 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
             ),
           ),
         ] else ...[
+          // Multi-select controls
+          if (_selectedQuestionIds.isNotEmpty) ...[
+            Text(
+              '${_selectedQuestionIds.length} selected',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _selectAllQuestions,
+              icon: const Icon(Icons.select_all),
+              tooltip: 'Select All',
+            ),
+            IconButton(
+              onPressed: _clearSelection,
+              icon: const Icon(Icons.clear),
+              tooltip: 'Clear Selection',
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: _deleteSelectedQuestions,
+              icon: const Icon(Icons.delete_sweep),
+              label: Text('Delete (${_selectedQuestionIds.length})'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ] else ...[
+            IconButton(
+              onPressed: _selectAllQuestions,
+              icon: const Icon(Icons.checklist),
+              tooltip: 'Select Questions',
+            ),
+          ],
           ElevatedButton.icon(
             onPressed: _isSaving ? null : _saveBatchChanges,
             icon: _isSaving 
@@ -588,13 +653,113 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
     );
   }
 
+  // Multi-select methods
+  void _toggleQuestionSelection(String questionId) {
+    setState(() {
+      if (_selectedQuestionIds.contains(questionId)) {
+        _selectedQuestionIds.remove(questionId);
+      } else {
+        _selectedQuestionIds.add(questionId);
+      }
+    });
+  }
+
+  void _selectAllQuestions() {
+    setState(() {
+      _selectedQuestionIds = _editableQuestions.map((q) => q.id).toSet();
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedQuestionIds.clear();
+    });
+  }
+
+    Future<void> _deleteSelectedQuestions() async {
+    if (_selectedQuestionIds.isEmpty) return;
+
+    final count = _selectedQuestionIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text(
+          'Are you sure you want to permanently delete $count question${count > 1 ? 's' : ''}?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Show loading state
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      // Delete selected questions
+      int deletedCount = 0;
+      for (final questionId in _selectedQuestionIds.toList()) {
+        final question = _editableQuestions.firstWhere(
+          (q) => q.id == questionId,
+          orElse: () => SurveyQuestionModel(id: '', title: '', type: QuestionType.textInput, order: 0, isRequired: false, options: [], validation: {}, createdAt: DateTime.now(), isActive: true, configuration: {}),
+        );
+       
+        final isNewQuestion = question.id.isEmpty || question.id.startsWith('new_');
+       
+        if (!isNewQuestion) {
+          try {
+            await _questionService.permanentlyDeleteQuestion(question.id);
+            deletedCount++;
+          } catch (e) {
+            _showErrorSnackBar('Error deleting question: $e');
+          }
+        }
+      }
+
+      // Remove from local list and clear selection
+      setState(() {
+        _editableQuestions.removeWhere((q) => _selectedQuestionIds.contains(q.id));
+        _selectedQuestionIds.forEach((id) {
+          _controllers[id]?.forEach((key, controller) => controller.dispose());
+          _controllers.remove(id);
+        });
+        _selectedQuestionIds.clear();
+      });
+
+      if (deletedCount > 0) {
+        _showSuccessSnackBar('$deletedCount question${deletedCount > 1 ? 's' : ''} deleted successfully');
+      }
+    } finally {
+      setState(() {
+        _isDeleting = false;
+      });
+    }
+  }
+
   Widget _buildBatchEditCard(SurveyQuestionModel question, int index, {required Key key}) {
     final controllers = _controllers[question.id];
     if (controllers == null) return Container(key: key);
 
+    final isSelected = _selectedQuestionIds.contains(question.id);
+
     return Card(
       key: key,
       margin: const EdgeInsets.only(bottom: 16.0),
+      color: isSelected ? Colors.blue.shade50 : null,
+      elevation: isSelected ? 4 : 1,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -612,6 +777,11 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
               ),
               child: Row(
                 children: [
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (value) => _toggleQuestionSelection(question.id),
+                  ),
+                  const SizedBox(width: 4),
                   const Icon(Icons.drag_handle, color: Colors.grey),
                   const SizedBox(width: 8),
                   Expanded(
