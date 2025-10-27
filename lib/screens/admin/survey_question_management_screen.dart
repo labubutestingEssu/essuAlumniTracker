@@ -59,7 +59,8 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   }
 
   void _initializeBatchEditMode() {
-    _editableQuestions = List.from(_questions);
+    // Use sorted questions by section for batch edit mode
+    _editableQuestions = _sortQuestionsBySection(List.from(_questions));
     _disposeControllers();
     _controllers.clear();
     
@@ -100,7 +101,135 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       filtered = filtered.where((q) => q.type == _filterType).toList();
     }
     
-    return filtered;
+    // Group by section and sort within each section
+    return _sortQuestionsBySection(filtered);
+  }
+
+  List<SurveyQuestionModel> _sortQuestionsBySection(List<SurveyQuestionModel> questions) {
+    print('🔍 SORT_DEBUG: Starting sort with ${questions.length} questions');
+    
+    // Define section order
+    final sectionOrder = [
+      'section_privacy',
+      'section_personal',
+      'section_education',
+      'section_employment',
+      'section_self_employment',
+    ];
+    
+    // Helper function to map sectionId to a section name
+    String? getSectionNameFromId(String? sectionId) {
+      if (sectionId == null || sectionId.isEmpty) {
+        print('🔍 SORT_DEBUG: sectionId is null or empty');
+        return null;
+      }
+      
+      print('🔍 SORT_DEBUG: Checking sectionId="$sectionId"');
+      
+      // Check if it's already a section name
+      if (sectionOrder.contains(sectionId)) {
+        print('🔍 SORT_DEBUG: sectionId is already a valid section name');
+        return sectionId;
+      }
+      
+      // Check if it's a section header question by its ID
+      final sectionHeaderQuestion = questions.where((q) => q.id == sectionId && q.type == QuestionType.section).firstOrNull;
+      if (sectionHeaderQuestion != null) {
+        print('🔍 SORT_DEBUG: Found section header question with id="$sectionId"');
+        // This is a section header question, check its sectionId field
+        if (sectionOrder.contains(sectionHeaderQuestion.sectionId)) {
+          print('🔍 SORT_DEBUG: Returning sectionId="${sectionHeaderQuestion.sectionId}" from header question');
+          return sectionHeaderQuestion.sectionId;
+        }
+      }
+      
+      // Try to find section header questions that match section names
+      for (var sectionName in sectionOrder) {
+        final sectionHeader = questions.where((q) => q.id == sectionName && q.type == QuestionType.section).firstOrNull;
+        if (sectionHeader != null && sectionHeader.sectionId == sectionId) {
+          print('🔍 SORT_DEBUG: Found matching section header, returning sectionName="$sectionName"');
+          return sectionName;
+        }
+      }
+      
+      // If sectionId is a question ID that points to a section header, extract the section name
+      final pointedSection = questions.where((q) => q.id == sectionId && q.type == QuestionType.section).firstOrNull;
+      if (pointedSection != null && pointedSection.sectionId != null) {
+        print('🔍 SORT_DEBUG: Extracted section name="${pointedSection.sectionId}" from pointed section');
+        return pointedSection.sectionId;
+      }
+      
+      print('🔍 SORT_DEBUG: Could not determine section name, returning null');
+      return null;
+    }
+    
+    // Separate questions by section
+    Map<String, List<SurveyQuestionModel>> sectionMap = {};
+    List<SurveyQuestionModel> questionsWithoutSection = [];
+    
+    for (var question in questions) {
+      print('🔍 SORT_DEBUG: Processing question id="${question.id}", title="${question.title}", sectionId="${question.sectionId}", order=${question.order}');
+      
+      if (question.sectionId != null && question.sectionId!.isNotEmpty) {
+        // Try to get the section name from the sectionId
+        final sectionName = getSectionNameFromId(question.sectionId);
+        print('🔍 SORT_DEBUG: Resolved sectionName="$sectionName" for question id="${question.id}"');
+        
+        if (sectionName != null) {
+          sectionMap.putIfAbsent(sectionName, () => []);
+          sectionMap[sectionName]!.add(question);
+          print('🔍 SORT_DEBUG: Added to sectionMap["$sectionName"]');
+        } else {
+          // Can't determine section, use the sectionId as-is
+          print('🔍 SORT_DEBUG: Using sectionId as-is: "${question.sectionId}"');
+          sectionMap.putIfAbsent(question.sectionId!, () => []);
+          sectionMap[question.sectionId!]!.add(question);
+        }
+      } else {
+        // Question has no section
+        print('🔍 SORT_DEBUG: Question has no sectionId, adding to questionsWithoutSection');
+        questionsWithoutSection.add(question);
+      }
+    }
+    
+    // Sort within each section by order
+    sectionMap.forEach((sectionId, sectionQuestions) {
+      print('🔍 SORT_DEBUG: Sorting ${sectionQuestions.length} questions in section="$sectionId"');
+      sectionQuestions.sort((a, b) => a.order.compareTo(b.order));
+      for (var q in sectionQuestions) {
+        print('🔍 SORT_DEBUG:   - order=${q.order}, title="${q.title}"');
+      }
+    });
+    
+    // Combine in section order
+    List<SurveyQuestionModel> result = [];
+    for (var sectionName in sectionOrder) {
+      if (sectionMap.containsKey(sectionName)) {
+        print('🔍 SORT_DEBUG: Adding ${sectionMap[sectionName]!.length} questions from section="$sectionName"');
+        result.addAll(sectionMap[sectionName]!);
+      } else {
+        print('🔍 SORT_DEBUG: No questions in section="$sectionName"');
+      }
+    }
+    
+    // Handle questions without section at the end
+    questionsWithoutSection.sort((a, b) => a.order.compareTo(b.order));
+    result.addAll(questionsWithoutSection);
+    
+    // Handle any sections not in the predefined order (shouldn't happen but just in case)
+    for (var sectionName in sectionMap.keys) {
+      if (!sectionOrder.contains(sectionName)) {
+        print('🔍 SORT_DEBUG: Adding ${sectionMap[sectionName]!.length} questions from unlisted section="$sectionName"');
+        result.addAll(sectionMap[sectionName]!);
+      }
+    }
+    
+    print('🔍 SORT_DEBUG: Final result has ${result.length} questions');
+    for (var q in result) {
+      print('🔍 SORT_DEBUG:   RESULT - order=${q.order}, sectionId="${q.sectionId}", title="${q.title}"');
+    }
+    
+    return result;
   }
 
   @override
@@ -1338,12 +1467,16 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
             errors.add('Question ${i + 1}: Title is required');
           }
           
-          // Update question with controller values
+          // Update question with controller values, preserving all other fields
           _editableQuestions[i] = question.copyWith(
             title: title,
             description: controllers['description']!.text.trim().isEmpty 
                 ? null 
                 : controllers['description']!.text.trim(),
+            options: controllers['options']!.text
+                .split('\n')
+                .where((s) => s.trim().isNotEmpty)
+                .toList(),
             updatedAt: DateTime.now(),
           );
         }
@@ -1361,7 +1494,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
           final cleanQuestion = question.copyWith(id: '');
           await _questionService.createQuestion(cleanQuestion);
         } else {
-          // Update existing question
+          // Update existing question with all fields preserved
           await _questionService.updateQuestion(question);
         }
       }
@@ -1384,6 +1517,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       type: QuestionType.textInput,
       isRequired: false,
       order: _editableQuestions.length + 1,
+      sectionId: 'section_personal', // Default to Personal Information section
       configuration: SurveyQuestionModel.getDefaultConfiguration(QuestionType.textInput),
       options: [],
       validation: {},
@@ -1567,6 +1701,9 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
         _hasDynamicOptions = true;
         _selectedDynamicType = question.configuration['dynamicOptions'] as String?;
       }
+    } else {
+      // Default to Personal Information section for new questions
+      _selectedSectionId = 'section_personal';
     }
   }
 

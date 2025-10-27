@@ -289,53 +289,57 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
     _questionsBySection.clear();
     _sections.clear();
     
-    // Sort questions by order first
-    final sortedQuestions = List<SurveyQuestionModel>.from(questions)
-      ..sort((a, b) => a.order.compareTo(b.order));
+    // First, sort questions by section, then by order within each section
+    // Define section order
+    final sectionOrder = [
+      'section_privacy',
+      'section_personal',
+      'section_education',
+      'section_employment',
+      'section_self_employment',
+    ];
     
-    String currentSectionId = '';
-    List<SurveyQuestionModel> currentSectionQuestions = [];
+    // Separate questions by section
+    Map<String, List<SurveyQuestionModel>> sectionMap = {};
+    List<SurveyQuestionModel> questionsWithoutSection = [];
     
-    for (var question in sortedQuestions) {
-      print('DEBUG: Processing question ${question.id} (${question.type}) - order: ${question.order}');
-      
-      // If this is a section divider, start a new section
-      if (question.type == QuestionType.section) {
-        // Save the previous section if it has questions
-        if (currentSectionId.isNotEmpty && currentSectionQuestions.isNotEmpty) {
-          _questionsBySection[currentSectionId] = List.from(currentSectionQuestions);
-          _sections.add(currentSectionId);
-          print('DEBUG: Completed section $currentSectionId with ${currentSectionQuestions.length} questions');
-        }
-        
-        // Start new section
-        currentSectionId = question.id;
-        currentSectionQuestions = [question]; // Include the section header
-        print('DEBUG: Started new section: $currentSectionId');
+    for (var question in questions) {
+      if (question.sectionId != null && question.sectionId!.isNotEmpty) {
+        // Use sectionId directly
+        final sectionName = question.sectionId!;
+        sectionMap.putIfAbsent(sectionName, () => []);
+        sectionMap[sectionName]!.add(question);
       } else {
-        // Add question to current section
-        if (currentSectionId.isEmpty) {
-          // If no section started yet, create a default first section
-          currentSectionId = 'section_personal';
-          print('DEBUG: Creating default first section: $currentSectionId');
-        }
-        currentSectionQuestions.add(question);
-        print('DEBUG: Added question ${question.id} to section $currentSectionId');
+        // Question has no section
+        questionsWithoutSection.add(question);
       }
     }
     
-    // Don't forget the last section
-    if (currentSectionId.isNotEmpty && currentSectionQuestions.isNotEmpty) {
-      _questionsBySection[currentSectionId] = currentSectionQuestions;
-      _sections.add(currentSectionId);
-      print('DEBUG: Completed final section $currentSectionId with ${currentSectionQuestions.length} questions');
+    // Sort within each section by order
+    sectionMap.forEach((sectionId, sectionQuestions) {
+      sectionQuestions.sort((a, b) => a.order.compareTo(b.order));
+    });
+    
+    // Combine in section order
+    for (var sectionName in sectionOrder) {
+      if (sectionMap.containsKey(sectionName)) {
+        _questionsBySection[sectionName] = sectionMap[sectionName]!;
+        _sections.add(sectionName);
+        print('DEBUG: Added section $sectionName with ${sectionMap[sectionName]!.length} questions');
+      }
+    }
+    
+    // Handle questions without section at the end
+    if (questionsWithoutSection.isNotEmpty) {
+      questionsWithoutSection.sort((a, b) => a.order.compareTo(b.order));
+      _questionsBySection['no_section'] = questionsWithoutSection;
+      _sections.add('no_section');
     }
     
     print('DEBUG: Questions organized by sections:');
     for (var section in _sections) {
       final questionCount = _questionsBySection[section]?.length ?? 0;
-      final questionIds = _questionsBySection[section]?.map((q) => q.id).join(', ') ?? '';
-      print('  $section: $questionCount questions [$questionIds]');
+      print('  $section: $questionCount questions');
     }
   }
 

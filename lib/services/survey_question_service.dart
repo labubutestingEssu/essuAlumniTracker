@@ -90,12 +90,16 @@ class SurveyQuestionService {
   // Create a new question
   Future<String?> createQuestion(SurveyQuestionModel question) async {
     try {
+      print('🎯 Creating new question in section: ${question.sectionId}');
+      
       // Get the next order number based on section
       int nextOrder;
       if (question.sectionId != null && question.sectionId!.isNotEmpty) {
         nextOrder = await _getNextOrderInSection(question.sectionId);
+        print('📌 Assigned order $nextOrder to new question in section ${question.sectionId}');
       } else {
         nextOrder = await _getNextOrder();
+        print('📌 Assigned order $nextOrder to new question (no section)');
       }
       
       final questionToCreate = question.copyWith(
@@ -107,6 +111,7 @@ class SurveyQuestionService {
           .collection(_collection)
           .add(questionToCreate.toMap());
       
+      print('✅ Question created with ID: ${docRef.id}, order: $nextOrder');
       return docRef.id;
     } catch (e) {
       print('Error creating question: $e');
@@ -316,67 +321,69 @@ class SurveyQuestionService {
   // Get the next order number within a specific section
   Future<int> _getNextOrderInSection(String? sectionId) async {
     try {
-      Query query = _firestore.collection(_collection);
-      
-      if (sectionId != null && sectionId.isNotEmpty) {
-        query = query.where('sectionId', isEqualTo: sectionId);
+      if (sectionId == null || sectionId.isEmpty) {
+        return await _getNextOrder();
       }
       
-      QuerySnapshot querySnapshot = await query
-          .orderBy('order', descending: true)
-          .limit(1)
+      print('🔍 Getting next order for section: $sectionId');
+      
+      // Query questions in the specific section, ordered by order
+      // IMPORTANT: We need to fetch all questions in the section to calculate the correct next order
+      QuerySnapshot sectionQuerySnapshot = await _firestore
+          .collection(_collection)
+          .where('sectionId', isEqualTo: sectionId)
           .get();
-
-      if (querySnapshot.docs.isEmpty) {
-        // If no questions in this section, find the last order of the previous section
-        if (sectionId != null) {
-          return await _getLastOrderOfPreviousSection(sectionId);
-        }
+      
+      print('📊 Found ${sectionQuerySnapshot.docs.length} total questions in section $sectionId');
+      
+      // Convert to SurveyQuestionModel and get all orders
+      List<SurveyQuestionModel> sectionQuestions = sectionQuerySnapshot.docs
+          .map((doc) => SurveyQuestionModel.fromFirestore(doc))
+          .toList();
+      
+      // Sort by order
+      sectionQuestions.sort((a, b) => a.order.compareTo(b.order));
+      
+      // Log all orders in this section
+      print('📋 All questions in section $sectionId:');
+      for (var q in sectionQuestions) {
+        print('   - Order ${q.order}: ${q.title}');
+      }
+      
+      if (sectionQuestions.isEmpty) {
+        // No questions in this section, return 1
+        print('📝 No existing questions in $sectionId, starting with order 1');
         return 1;
       }
 
-      final lastQuestion = SurveyQuestionModel.fromFirestore(querySnapshot.docs.first);
-      return lastQuestion.order + 1;
+      // Get the highest order in this section
+      final highestOrder = sectionQuestions.last.order;
+      final nextOrder = highestOrder + 1;
+      print('📝 Highest order in $sectionId is $highestOrder, next will be: $nextOrder');
+      
+      return nextOrder;
     } catch (e) {
-      print('Error getting next order in section: $e');
+      print('❌ Error getting next order in section: $e');
       return await _getNextOrder(); // Fallback to global order
     }
   }
 
-  // Get the last order number of the previous section
-  Future<int> _getLastOrderOfPreviousSection(String currentSectionId) async {
-    try {
-      // Define section order
-      final sectionOrder = [
-        'section_privacy',
-        'section_personal', 
-        'section_education',
-        'section_employment',
-        'section_self_employment',
-      ];
-      
-      final currentIndex = sectionOrder.indexOf(currentSectionId);
-      if (currentIndex <= 0) return 0; // First section or invalid section
-      
-      final previousSectionId = sectionOrder[currentIndex - 1];
-      
-      QuerySnapshot querySnapshot = await _firestore
-          .collection(_collection)
-          .where('sectionId', isEqualTo: previousSectionId)
-          .orderBy('order', descending: true)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isEmpty) {
-        return 0;
-      }
-
-      final lastQuestion = SurveyQuestionModel.fromFirestore(querySnapshot.docs.first);
-      return lastQuestion.order;
-    } catch (e) {
-      print('Error getting last order of previous section: $e');
-      return 0;
-    }
+  // Get the base order number for a section based on its position
+  int _getBaseOrderForSection(String sectionId) {
+    // Define section order and their base orders (multiples of 100)
+    final sectionOrder = [
+      'section_privacy',    // order 100-199
+      'section_personal',   // order 200-299
+      'section_education',  // order 300-399
+      'section_employment', // order 400-499
+      'section_self_employment', // order 500-599
+    ];
+    
+    final index = sectionOrder.indexOf(sectionId);
+    if (index == -1) return 999; // Unknown section goes to end
+    
+    // Return base order: 100 for index 0, 200 for index 1, etc.
+    return (index + 1) * 100;
   }
 
   // Duplicate a question
