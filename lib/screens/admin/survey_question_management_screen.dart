@@ -27,6 +27,9 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   
   // Controllers for batch edit mode
   final Map<String, Map<String, TextEditingController>> _controllers = {};
+  
+  // Scroll controller for batch edit view
+  final ScrollController _batchEditScrollController = ScrollController();
 
   @override
   void initState() {
@@ -557,14 +560,31 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       );
     }
 
-    return ReorderableListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: _editableQuestions.length,
-      onReorder: _reorderBatchQuestions,
-      itemBuilder: (context, index) {
-        final question = _editableQuestions[index];
-        return _buildBatchEditCard(question, index, key: ValueKey(question.id));
-      },
+    return Column(
+      children: [
+        Expanded(
+          child: NotificationListener<ScrollUpdateNotification>(
+            onNotification: (notification) {
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _batchEditScrollController,
+              padding: const EdgeInsets.all(16.0),
+              child: ReorderableListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                onReorder: _reorderBatchQuestions,
+                children: _editableQuestions.asMap().entries.map((entry) {
+                  int index = entry.key;
+                  final question = entry.value;
+                  return _buildBatchEditCard(question, index, key: ValueKey(question.id));
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -935,21 +955,21 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
        case QuestionType.section:
          return 'Section Header';
        case QuestionType.textInput:
-         return 'Text Input';
+         return 'Short Answer';
        case QuestionType.textArea:
-         return 'Text Area';
+         return 'Paragraph';
        case QuestionType.singleChoice:
-         return 'Single Choice';
+         return 'Multiple Choice';
        case QuestionType.multipleChoice:
          return 'Multiple Choice';
        case QuestionType.checkboxList:
-         return 'Checkbox List';
+         return 'Checkboxes';
        case QuestionType.dropdown:
          return 'Dropdown';
        case QuestionType.rating:
-         return 'Rating';
+         return 'Linear Scale';
        case QuestionType.dateInput:
-         return 'Date Input';
+         return 'Date and Time';
        case QuestionType.numberInput:
          return 'Number Input';
        case QuestionType.switchToggle:
@@ -1212,6 +1232,15 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       // Update the question ID in the list to match controller key
       _editableQuestions[_editableQuestions.length - 1] = newQuestion.copyWith(id: newQuestionId);
     });
+    
+    // Scroll to bottom after the new question is added
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_batchEditScrollController.hasClients) {
+          _batchEditScrollController.jumpTo(_batchEditScrollController.position.maxScrollExtent);
+        }
+      });
+    });
   }
 
   Future<void> _deleteBatchQuestion(int index) async {
@@ -1316,6 +1345,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   @override
   void dispose() {
     _disposeControllers();
+    _batchEditScrollController.dispose();
     super.dispose();
   }
 
@@ -1537,21 +1567,21 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
       case QuestionType.section:
         return 'Section Header';
       case QuestionType.textInput:
-        return 'Text Input';
+        return 'Short Answer';
       case QuestionType.textArea:
-        return 'Text Area';
+        return 'Paragraph';
       case QuestionType.singleChoice:
-        return 'Single Choice';
+        return 'Multiple Choice';
       case QuestionType.multipleChoice:
         return 'Multiple Choice';
       case QuestionType.checkboxList:
-        return 'Checkbox List';
+        return 'Checkboxes';
       case QuestionType.dropdown:
         return 'Dropdown';
       case QuestionType.rating:
-        return 'Rating';
+        return 'Linear Scale';
       case QuestionType.dateInput:
-        return 'Date Input';
+        return 'Date and Time';
       case QuestionType.numberInput:
         return 'Number Input';
       case QuestionType.switchToggle:
