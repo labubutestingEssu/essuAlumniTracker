@@ -104,9 +104,9 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
       for (var question in questions) {
         final sectionId = question.sectionId ?? question.getSectionIdFromQuestionId();
         print('debugForm: Question ${question.id} (setId:${question.setId}) (${question.type}) - section: $sectionId, order: ${question.order}');
-        if (question.type == QuestionType.multipleChoice) {
-          print('debugForm: Multiple choice options: ${question.options}');
-          print('debugForm: Multiple choice required: ${question.isRequired}');
+        if (question.type == QuestionType.checkboxList) {
+          print('debugForm: Checkbox list options: ${question.options}');
+          print('debugForm: Checkbox list required: ${question.isRequired}');
         }
       }
       
@@ -274,7 +274,7 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
               }
               
               // Radio/Single choice fields for Year Graduated
-              else if (question.type == QuestionType.multipleChoice) {
+              else if (question.type == QuestionType.singleChoice) {
                 if (title.contains('YEAR') && title.contains('GRADUATED')) {
                   userValue = userProfile['batchYear'];
                 }

@@ -1077,9 +1077,6 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       case QuestionType.singleChoice:
         icon = Icons.radio_button_checked;
         break;
-      case QuestionType.multipleChoice:
-        icon = Icons.check_box;
-        break;
       case QuestionType.dropdown:
         icon = Icons.arrow_drop_down;
         break;
@@ -1628,10 +1625,8 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
          return 'Paragraph';
        case QuestionType.singleChoice:
          return 'Multiple Choice';
-       case QuestionType.multipleChoice:
-         return 'Multiple Choice';
        case QuestionType.checkboxList:
-         return 'Checkboxes';
+         return 'Checkbox';
        case QuestionType.dropdown:
          return 'Dropdown';
        case QuestionType.rating:
@@ -2317,7 +2312,6 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   bool _needsOptions(QuestionType type) {
     return [
       QuestionType.singleChoice,
-      QuestionType.multipleChoice,
       QuestionType.checkboxList,
       QuestionType.dropdown,
     ].contains(type);
@@ -2781,7 +2775,6 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
   bool _needsOptions(QuestionType type) {
     return [
       QuestionType.singleChoice,
-      QuestionType.multipleChoice,
       QuestionType.checkboxList,
       QuestionType.dropdown,
     ].contains(type);
@@ -2798,8 +2791,6 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
         return 'Paragraph';
       case QuestionType.singleChoice:
         return 'Single Choice';
-      case QuestionType.multipleChoice:
-        return 'Multiple Choice';
       case QuestionType.checkboxList:
         return 'Checkboxes';
       case QuestionType.dropdown:

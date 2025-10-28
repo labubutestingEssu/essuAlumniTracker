@@ -268,7 +268,6 @@ class SurveyResponseService {
           };
           break;
           
-        case QuestionType.multipleChoice:
         case QuestionType.checkboxList:
           Map<String, int> optionCounts = {};
           for (var response in responses) {

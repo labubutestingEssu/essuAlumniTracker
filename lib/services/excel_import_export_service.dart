@@ -84,7 +84,7 @@ class ExcelImportExportService {
       ['Section ID', 'Options: section_privacy, section_personal, section_education, section_employment, section_self_employment'],
       ['Title', 'The question text displayed to users (Required)'],
       ['Description', 'Optional helper text shown below the question'],
-      ['Question Type', 'Options: textInput, textArea, singleChoice, multipleChoice, dropdown, checkboxList, dateInput, numberInput, switchToggle, rating, section'],
+      ['Question Type', 'Options: textInput, textArea, singleChoice, dropdown, checkboxList, dateInput, numberInput, switchToggle, rating, section'],
       ['Is Required', 'Use YES or NO'],
       ['Options', 'For choice/dropdown questions: comma-separated values (e.g., "Option1, Option2, Option3")'],
       ['Dynamic Options', 'For dynamic data: batchYears (academic years), courses (from database), colleges (from database). Leave blank for static options.'],
@@ -95,7 +95,6 @@ class ExcelImportExportService {
       ['textInput', 'Short text answer (single line)'],
       ['textArea', 'Long text answer (multiple lines)'],
       ['singleChoice', 'Radio buttons - user picks one option'],
-      ['multipleChoice', 'Checkboxes - user can pick multiple options'],
       ['dropdown', 'Dropdown menu - user selects one option'],
       ['checkboxList', 'Checkbox list - user can select multiple'],
       ['dateInput', 'Date picker'],
@@ -273,7 +272,6 @@ class ExcelImportExportService {
     // Validate options for choice-type questions
     final needsOptions = [
       QuestionType.singleChoice,
-      QuestionType.multipleChoice,
       QuestionType.dropdown,
       QuestionType.checkboxList,
     ].contains(questionType);

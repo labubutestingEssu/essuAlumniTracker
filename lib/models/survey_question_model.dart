@@ -5,7 +5,6 @@ enum QuestionType {
   textInput,
   textArea,
   singleChoice,
-  multipleChoice,
   rating,
   checkboxList,
   dropdown,

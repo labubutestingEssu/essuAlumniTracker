@@ -29,8 +29,6 @@ class DynamicQuestionWidget extends StatelessWidget {
         return _buildTextArea(context);
       case QuestionType.singleChoice:
         return _buildSingleChoice(context);
-      case QuestionType.multipleChoice:
-        return _buildMultipleChoice(context);
       case QuestionType.checkboxList:
         return _buildCheckboxList(context);
       case QuestionType.dropdown:
@@ -587,7 +585,7 @@ class DynamicQuestionWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMultipleChoice(BuildContext context) {
+  Widget _buildCheckboxList(BuildContext context) {
     final List<String> selectedValues = currentValue is List 
         ? List<String>.from(currentValue) 
         : [];
@@ -625,10 +623,6 @@ class DynamicQuestionWidget extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  Widget _buildCheckboxList(BuildContext context) {
-    return _buildMultipleChoice(context); // Same as multiple choice
   }
 
   Widget _buildDropdown(BuildContext context) {
