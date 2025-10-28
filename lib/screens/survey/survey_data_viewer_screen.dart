@@ -112,13 +112,32 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
 
   Future<void> _loadQuestions() async {
     try {
+      // Load ALL questions from ALL sets to match old responses
+      // This is important because responses may contain question IDs from previous sets
       final futures = await Future.wait([
-        _questionService.getAllQuestions(),
+        _questionService.getAllQuestions(), // Gets questions from all sets
         _courseService.getAllCourses(),
       ]);
       
       final questions = futures[0] as List<SurveyQuestionModel>;
       final courses = futures[1] as List<Course>;
+      
+      print('=== SURVEY DATA VIEWER: LOADING QUESTIONS ===');
+      print('Loaded ${questions.length} questions from all sets');
+      
+      if (questions.isEmpty) {
+        print('⚠️ WARNING: No questions loaded! This will cause all responses to show "not found"');
+      } else {
+        // Print first 5 question IDs for debugging
+        print('Sample question IDs (first 5):');
+        for (int i = 0; i < questions.length && i < 5; i++) {
+          print('  ${i + 1}. ${questions[i].id} - "${questions[i].title}" (set: ${questions[i].setId})');
+        }
+        
+        // Show unique set IDs
+        final setIds = questions.map((q) => q.setId).toSet();
+        print('Questions from sets: $setIds');
+      }
       
       // Extract unique colleges from courses
       final collegeSet = <String>{};
@@ -133,7 +152,8 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
         _colleges = collegeSet.toList()..sort();
       });
     } catch (e) {
-      print('Error loading questions: $e');
+      print('❌ ERROR loading questions: $e');
+      print('Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -636,6 +656,18 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
 
 
   Widget _buildSurveyResponseDetails(SurveyResponseModel response) {
+    // Debug: Print response question IDs
+    print('\n=== DISPLAYING RESPONSE: ${response.fullName} ===');
+    print('Response has ${response.responses.length} answers');
+    print('Available questions in memory: ${_questions.length}');
+    print('Sample response question IDs (first 5):');
+    int idx = 0;
+    for (var entry in response.responses.entries) {
+      if (idx >= 5) break;
+      print('  ${idx + 1}. ${entry.key} -> ${entry.value.toString().substring(0, entry.value.toString().length > 50 ? 50 : entry.value.toString().length)}...');
+      idx++;
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -684,11 +716,18 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
           ...response.responses.entries.map((entry) {
             final questionId = entry.key;
             final answer = entry.value;
+            
+            // Debug: Try to find question
+            final foundQuestion = _questions.where((q) => q.id == questionId).toList();
+            if (foundQuestion.isEmpty) {
+              print('⚠️ Question not found: $questionId');
+            }
+            
             final question = _questions.firstWhere(
               (q) => q.id == questionId,
               orElse: () => SurveyQuestionModel(
                 id: questionId,
-                title: 'Question ID: $questionId',
+                title: 'Question ID: $questionId (not found in current questions)',
                 type: QuestionType.textInput,
                 isRequired: false,
                 order: 0,
@@ -699,6 +738,54 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
                 isActive: true,
               ),
             );
+            
+            // Format answer properly based on type
+            String displayAnswer = '';
+            if (answer != null) {
+              // Handle Map structure (bypass fields, other_specify, etc.)
+              if (answer is Map) {
+                // Check for bypass structure with 'value' key
+                if (answer.containsKey('value')) {
+                  final value = answer['value'];
+                  if (value != null && value.toString().isNotEmpty) {
+                    displayAnswer = value.toString();
+                  } else {
+                    displayAnswer = '(empty)';
+                  }
+                }
+                // Check for 'other_specify' structure
+                else if (answer.containsKey('other_specify')) {
+                  final mainValue = answer['value'] ?? '';
+                  final otherValue = answer['other_specify'];
+                  if (otherValue != null && otherValue.toString().isNotEmpty) {
+                    displayAnswer = '$mainValue: ${otherValue.toString()}';
+                  } else {
+                    displayAnswer = mainValue.toString();
+                  }
+                }
+                // Generic map handling
+                else {
+                  final nonEmptyValues = answer.values.where((v) => v != null && v.toString().isNotEmpty);
+                  displayAnswer = nonEmptyValues.isNotEmpty ? nonEmptyValues.join(', ') : answer.toString();
+                }
+              }
+              // Handle List
+              else if (answer is List) {
+                displayAnswer = answer.isNotEmpty ? answer.join(', ') : '(empty list)';
+              }
+              // Handle DateTime
+              else if (answer is DateTime) {
+                displayAnswer = DateFormat('MMM dd, yyyy').format(answer);
+              }
+              // Handle simple types
+              else {
+                displayAnswer = answer.toString();
+              }
+            }
+            
+            if (displayAnswer.isEmpty) {
+              displayAnswer = '(no answer)';
+            }
             
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -734,7 +821,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      answer.toString(),
+                      displayAnswer,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -847,19 +934,41 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
             String displayAnswer = '';
             
             if (answer != null) {
-              if (answer is List) {
-                displayAnswer = answer.join(', ');
-              } else if (answer is DateTime) {
-                displayAnswer = DateFormat('MMM dd, yyyy').format(answer);
-              } else if (answer is Map) {
-                // Handle bypass structure for name fields
-                final actualValue = answer['value']?.toString() ?? '';
-                if (actualValue.isNotEmpty) {
-                  displayAnswer = actualValue;
-                } else {
-                  displayAnswer = answer.values.join(', ');
+              // Handle Map structure (bypass fields, other_specify, etc.)
+              if (answer is Map) {
+                // Check for bypass structure with 'value' key
+                if (answer.containsKey('value')) {
+                  final value = answer['value'];
+                  if (value != null && value.toString().isNotEmpty) {
+                    displayAnswer = value.toString();
+                  }
                 }
-              } else {
+                // Check for 'other_specify' structure
+                else if (answer.containsKey('other_specify')) {
+                  final mainValue = answer['value'] ?? '';
+                  final otherValue = answer['other_specify'];
+                  if (otherValue != null && otherValue.toString().isNotEmpty) {
+                    displayAnswer = '$mainValue: ${otherValue.toString()}';
+                  } else {
+                    displayAnswer = mainValue.toString();
+                  }
+                }
+                // Generic map handling
+                else {
+                  final nonEmptyValues = answer.values.where((v) => v != null && v.toString().isNotEmpty);
+                  displayAnswer = nonEmptyValues.isNotEmpty ? nonEmptyValues.join(', ') : '';
+                }
+              }
+              // Handle List
+              else if (answer is List) {
+                displayAnswer = answer.join(', ');
+              }
+              // Handle DateTime
+              else if (answer is DateTime) {
+                displayAnswer = DateFormat('MMM dd, yyyy').format(answer);
+              }
+              // Handle simple types
+              else {
                 displayAnswer = answer.toString();
               }
             }
