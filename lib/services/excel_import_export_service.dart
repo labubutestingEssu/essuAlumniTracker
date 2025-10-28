@@ -51,12 +51,12 @@ class ExcelImportExportService {
     
     // Add sample questions for each section
     final samples = [
-      ['2', 'section_privacy', 'Do you consent to data collection?', 'Privacy notice', 'multipleChoice', 'YES', 'Yes, No', '', 'YES'],
+      ['2', 'section_privacy', 'Do you consent to data collection?', 'Privacy notice', 'singleChoice', 'YES', 'Yes, No', '', 'YES'],
       ['3', 'section_personal', 'What is your full name?', '', 'textInput', 'YES', '', '', 'YES'],
       ['4', 'section_personal', 'Mobile Number', 'Enter 11-digit number', 'textInput', 'YES', '', '', 'YES'],
-      ['5', 'section_education', 'Year Graduated', '', 'multipleChoice', 'YES', '', 'batchYears', 'YES'],
+      ['5', 'section_education', 'Year Graduated', '', 'singleChoice', 'YES', '', 'batchYears', 'YES'],
       ['6', 'section_education', 'College Degree', '', 'dropdown', 'YES', '', 'courses', 'YES'],
-      ['7', 'section_employment', 'Are you currently employed?', '', 'multipleChoice', 'YES', 'Yes, No, Never Employed', '', 'YES'],
+      ['7', 'section_employment', 'Are you currently employed?', '', 'singleChoice', 'YES', 'Yes, No, Never Employed', '', 'YES'],
       ['8', 'section_self_employment', 'Job Position', '', 'textInput', 'YES', '', '', 'YES'],
     ];
     
@@ -84,7 +84,7 @@ class ExcelImportExportService {
       ['Section ID', 'Options: section_privacy, section_personal, section_education, section_employment, section_self_employment'],
       ['Title', 'The question text displayed to users (Required)'],
       ['Description', 'Optional helper text shown below the question'],
-      ['Question Type', 'Options: textInput, textArea, multipleChoice, dropdown, checkboxList, dateInput, numberInput, switchToggle, rating, section'],
+      ['Question Type', 'Options: textInput, textArea, singleChoice, multipleChoice, dropdown, checkboxList, dateInput, numberInput, switchToggle, rating, section'],
       ['Is Required', 'Use YES or NO'],
       ['Options', 'For choice/dropdown questions: comma-separated values (e.g., "Option1, Option2, Option3")'],
       ['Dynamic Options', 'For dynamic data: batchYears (academic years), courses (from database), colleges (from database). Leave blank for static options.'],
@@ -94,9 +94,10 @@ class ExcelImportExportService {
       [''],
       ['textInput', 'Short text answer (single line)'],
       ['textArea', 'Long text answer (multiple lines)'],
-      ['multipleChoice', 'Radio buttons - user picks one option'],
-      ['checkboxList', 'Checkboxes - user can pick multiple options'],
+      ['singleChoice', 'Radio buttons - user picks one option'],
+      ['multipleChoice', 'Checkboxes - user can pick multiple options'],
       ['dropdown', 'Dropdown menu - user selects one option'],
+      ['checkboxList', 'Checkbox list - user can select multiple'],
       ['dateInput', 'Date picker'],
       ['numberInput', 'Number input field'],
       ['switchToggle', 'On/off toggle switch'],
@@ -271,6 +272,7 @@ class ExcelImportExportService {
     
     // Validate options for choice-type questions
     final needsOptions = [
+      QuestionType.singleChoice,
       QuestionType.multipleChoice,
       QuestionType.dropdown,
       QuestionType.checkboxList,

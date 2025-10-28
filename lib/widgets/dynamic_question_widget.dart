@@ -27,6 +27,8 @@ class DynamicQuestionWidget extends StatelessWidget {
         return _buildTextInput(context);
       case QuestionType.textArea:
         return _buildTextArea(context);
+      case QuestionType.singleChoice:
+        return _buildSingleChoice(context);
       case QuestionType.multipleChoice:
         return _buildMultipleChoice(context);
       case QuestionType.checkboxList:
@@ -411,8 +413,8 @@ class DynamicQuestionWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMultipleChoice(BuildContext context) {
-    print('debugForm: Building multiple choice question ${question.id} (${question.title})');
+  Widget _buildSingleChoice(BuildContext context) {
+    print('debugForm: Building single choice question ${question.id} (${question.title})');
     print('debugForm: Options: ${question.options}');
     print('debugForm: Current value: $currentValue');
     print('debugForm: Required: ${question.isRequired}');
@@ -485,7 +487,7 @@ class DynamicQuestionWidget extends StatelessWidget {
       );
     }
     
-    // Normal multiple choice display (radio buttons for single selection)
+    // Normal single choice display (for non-auto-fill fields or when bypassed)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -585,7 +587,7 @@ class DynamicQuestionWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildCheckboxList(BuildContext context) {
+  Widget _buildMultipleChoice(BuildContext context) {
     final List<String> selectedValues = currentValue is List 
         ? List<String>.from(currentValue) 
         : [];
@@ -623,6 +625,10 @@ class DynamicQuestionWidget extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  Widget _buildCheckboxList(BuildContext context) {
+    return _buildMultipleChoice(context); // Same as multiple choice
   }
 
   Widget _buildDropdown(BuildContext context) {
