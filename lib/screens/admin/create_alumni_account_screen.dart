@@ -181,6 +181,28 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
     });
   }
 
+  // Helper method to clear all form fields
+  void _clearForm() {
+    _firstNameController.clear();
+    _lastNameController.clear();
+    _middleNameController.clear();
+    _suffixController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _studentIdController.clear();
+    _phoneController.clear();
+    _facebookUrlController.clear();
+    _instagramUrlController.clear();
+    
+    setState(() {
+      _selectedBatch = null;
+      _selectedCourse = null;
+      _selectedCollege = null;
+      _selectedRole = UserRole.alumni;
+      _errorMessage = null;
+    });
+  }
+
   void _updateCourses(String? college) {
     setState(() {
       _selectedCollege = college;
@@ -295,8 +317,9 @@ class _CreateAlumniAccountScreenState extends State<CreateAlumniAccountScreen> {
           // After re-login, refetch college/admin data to ensure college is set
           await _fetchCourses();
           await _filterCollegesForAdmin();
+          // Clear the form for new entry
+          _clearForm();
         }
-        // Do not call _clearForm() since we are refetching
       } catch (e) {
         setState(() {
           _errorMessage = e.toString();
