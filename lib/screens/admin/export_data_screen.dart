@@ -17,6 +17,8 @@ import 'package:excel/excel.dart';
 import 'dart:convert';
 import '../../utils/web_download_stub.dart' if (dart.library.html) '../../utils/web_download.dart';
 import '../../services/unified_user_service.dart';
+import '../../services/survey_question_service.dart';
+import '../../models/survey_question_model.dart';
 
 class ExportDataScreen extends StatefulWidget {
   const ExportDataScreen({Key? key}) : super(key: key);
@@ -81,8 +83,10 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       // Get all users from role-based tables
       final allUsers = await UnifiedUserService().getAllUsers();
       
+      // Filter out ADMIN and SUPER_ADMIN roles - only export alumni
+      List<UserModel> users = allUsers.where((user) => user.role == UserRole.alumni).toList();
+      
       // Filter users based on selected criteria
-      List<UserModel> users = allUsers;
       if (_selectedCollege != null) {
         users = users.where((user) => user.college == _selectedCollege).toList();
       }
@@ -92,28 +96,44 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       if (_selectedCourse != null) {
         users = users.where((user) => user.course == _selectedCourse).toList();
       }
-      // Get all completed survey responses to check completion status
+      
+      // Get survey questions from active set
+      final surveyQuestionService = SurveyQuestionService();
+      final activeSetId = await surveyQuestionService.getActiveSetId();
+      final surveyQuestions = await surveyQuestionService.getActiveQuestions(setId: activeSetId);
+      
+      // Filter out section headers, keep only actual questions
+      final actualQuestions = surveyQuestions.where((q) => q.type != QuestionType.section).toList();
+      
+      // Get all completed survey responses
       final List<SurveyResponseModel> completedSurveyResponses = await _surveyResponseService.getCompletedSurveyResponses();
       final Map<String, SurveyResponseModel> surveyByUserUid = { for (var r in completedSurveyResponses) r.userUid : r };
-      debugPrint('[DEBUG] Users fetched: ${users.length}, Completed survey responses: ${completedSurveyResponses.length}');
-      // Build headers and rows
+      
+      debugPrint('[DEBUG] Alumni users fetched: ${users.length}, Survey questions: ${actualQuestions.length}, Completed survey responses: ${completedSurveyResponses.length}');
+      
+      // Build headers - basic info + survey questions
       final headers = [
-        'Full Name', 'Email', 'Student/Faculty ID', 'College', 'Course', 'Batch Year', 'Phone', 'Current Occupation', 'Company', 'Location', 'Facebook', 'Instagram', 'Role', 'Survey Completed', 'Survey Completed At'
+        'Full Name', 'Email', 'Student ID', 'College', 'Course', 'Batch Year', 
+        'Phone', 'Current Occupation', 'Company', 'Location', 'Facebook', 'Instagram', 
+        'Survey Completed', 'Survey Completed At',
       ];
+      
+      // Add survey question titles as headers
+      for (var question in actualQuestions) {
+        headers.add(question.title);
+      }
+      
       final List<List<String>> allRows = [headers];
       int userWithSurveyCount = 0;
+      
       for (var user in users) {
         final survey = surveyByUserUid[user.uid];
         debugPrint('[DEBUG] User: uid=${user.uid}, fullName=${user.fullName}, surveyFound=${survey != null}');
-        // Use facultyId for admins, studentId for alumni
-        final idValue = (user.role == UserRole.admin || user.role == UserRole.super_admin)
-          ? (user.facultyId ?? '')
-          : user.studentId;
           
         final userRow = [
           user.fullName,
           user.email,
-          idValue,
+          user.studentId,
           user.college,
           user.course,
           user.batchYear,
@@ -123,19 +143,87 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
           user.location ?? '',
           user.facebookUrl ?? '',
           user.instagramUrl ?? '',
-          _getRoleDisplayText(user.role),
           (survey != null) ? 'Yes' : 'No',
           survey?.completedAt?.toIso8601String() ?? '',
         ];
+        
+        // Add survey answers for each question
         if (survey != null) {
           userWithSurveyCount++;
+          for (var question in actualQuestions) {
+            // Use getResponse method to properly retrieve the answer
+            final answer = survey.getResponse<dynamic>(question.id);
+            // Format answer based on type
+            String answerStr = '';
+            if (answer != null) {
+              // Handle Map structure (bypass fields, other_specify, etc.)
+              if (answer is Map) {
+                // Check for bypass structure with 'value' key
+                if (answer.containsKey('value')) {
+                  final value = answer['value'];
+                  if (value != null && value.toString().isNotEmpty) {
+                    answerStr = value.toString();
+                  }
+                }
+                // Check for 'other_specify' structure
+                else if (answer.containsKey('other_specify')) {
+                  final otherValue = answer['other_specify'];
+                  if (otherValue != null && otherValue.toString().isNotEmpty) {
+                    answerStr = 'Other: ${otherValue.toString()}';
+                  }
+                }
+                // Generic map handling
+                else {
+                  answerStr = answer.values.where((v) => v != null && v.toString().isNotEmpty).join(', ');
+                }
+              }
+              // Handle List
+              else if (answer is List) {
+                answerStr = answer.join(', ');
+              }
+              // Handle DateTime
+              else if (answer is DateTime) {
+                answerStr = '${answer.day}/${answer.month}/${answer.year}';
+              }
+              // Handle simple types
+              else {
+                answerStr = answer.toString();
+              }
+            }
+            userRow.add(answerStr);
+          }
+        } else {
+          // No survey - add empty cells for all questions
+          for (var _ in actualQuestions) {
+            userRow.add('');
+          }
         }
+        
         allRows.add(userRow);
       }
       debugPrint('[DEBUG] Users with survey: $userWithSurveyCount');
+      debugPrint('[DEBUG] Total rows in export: ${allRows.length} (including header)');
+      debugPrint('[DEBUG] Total question columns: ${actualQuestions.length}');
+      
       if (allRows.length <= 1) {
         debugPrint('[WARNING] No data rows added to Excel!');
       } else {
+        // Debug: Show sample of first user's data
+        if (allRows.length > 1) {
+          debugPrint('[DEBUG] Sample user row (first user):');
+          final sampleRow = allRows[1];
+          debugPrint('  - Name: ${sampleRow[0]}');
+          debugPrint('  - Email: ${sampleRow[1]}');
+          debugPrint('  - Survey Completed: ${sampleRow[12]}');
+          debugPrint('  - First 3 survey answers:');
+          final startIdx = 14; // After basic info
+          for (int i = 0; i < 3 && (startIdx + i) < sampleRow.length; i++) {
+            final questionIdx = i;
+            final questionTitle = questionIdx < actualQuestions.length ? actualQuestions[questionIdx].title : 'Unknown';
+            debugPrint('    Q${i + 1} ($questionTitle): ${sampleRow[startIdx + i]}');
+          }
+        }
+        
         for (int i = 0; i < allRows.length && i < 4; i++) {
           debugPrint('[DEBUG] Excel row $i: ${allRows[i]}');
         }
@@ -256,18 +344,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  // Helper to convert role enum to display text
-  String _getRoleDisplayText(UserRole role) {
-    switch (role) {
-      case UserRole.admin:
-        return 'College Admin';
-      case UserRole.super_admin:
-        return 'Admin';
-      case UserRole.alumni:
-        return 'Alumni';
     }
   }
 
@@ -439,7 +515,7 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                             Text(
                               '• Full Name\n'
                               '• Email\n'
-                              '• Student/Faculty ID\n'
+                              '• Student ID\n'
                               '• College\n'
                               '• Course\n'
                               '• Batch Year\n'
@@ -448,12 +524,15 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                               '• Company\n'
                               '• Location\n'
                               '• Social Media Links\n'
-                              '• Survey Completion Status',
+                              '• Survey Completion Status\n'
+                              '• All Survey Questions & Answers (from active question set)',
                               style: TextStyle(fontSize: 14),
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'Note: The data will be exported in CSV format and can be opened in any spreadsheet application.',
+                              'Note: The data will be exported in CSV format and can be opened in any spreadsheet application. '
+                              'Each survey question will appear as a separate column with the alumnus\'s answer. '
+                              'Only alumni accounts will be exported (admin accounts are excluded).',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontStyle: FontStyle.italic,
