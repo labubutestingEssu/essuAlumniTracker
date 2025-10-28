@@ -27,8 +27,6 @@ class DynamicQuestionWidget extends StatelessWidget {
         return _buildTextInput(context);
       case QuestionType.textArea:
         return _buildTextArea(context);
-      case QuestionType.singleChoice:
-        return _buildSingleChoice(context);
       case QuestionType.multipleChoice:
         return _buildMultipleChoice(context);
       case QuestionType.checkboxList:
@@ -413,7 +411,12 @@ class DynamicQuestionWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildSingleChoice(BuildContext context) {
+  Widget _buildMultipleChoice(BuildContext context) {
+    print('debugForm: Building multiple choice question ${question.id} (${question.title})');
+    print('debugForm: Options: ${question.options}');
+    print('debugForm: Current value: $currentValue');
+    print('debugForm: Required: ${question.isRequired}');
+    
     // Helper function to check if option contains "other"
     bool isOtherOption(String option) => option.toLowerCase().contains('other');
     
@@ -482,7 +485,7 @@ class DynamicQuestionWidget extends StatelessWidget {
       );
     }
     
-    // Normal single choice display (for non-auto-fill fields or when bypassed)
+    // Normal multiple choice display (radio buttons for single selection)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -496,14 +499,18 @@ class DynamicQuestionWidget extends StatelessWidget {
                 value: option,
                 groupValue: selectedValue,
                 onChanged: (value) {
+                  print('debugForm: Radio button changed to: $value for question ${question.id}');
                   // If it's a Year Graduated field in bypass mode, preserve the bypass structure
                   if (isYearGraduatedField && isBypassed) {
-                    onChanged({
+                    final mapValue = {
                       'value': value,
                       'bypassed': true,
                       'originalValue': currentValue is Map ? currentValue['originalValue'] : currentValue,
-                    });
+                    };
+                    print('debugForm: Calling onChanged with map value: $mapValue');
+                    onChanged(mapValue);
                   } else {
+                    print('debugForm: Calling onChanged with string value: $value');
                     onChanged(value);
                   }
                 },
@@ -578,7 +585,7 @@ class DynamicQuestionWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMultipleChoice(BuildContext context) {
+  Widget _buildCheckboxList(BuildContext context) {
     final List<String> selectedValues = currentValue is List 
         ? List<String>.from(currentValue) 
         : [];
@@ -616,10 +623,6 @@ class DynamicQuestionWidget extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  Widget _buildCheckboxList(BuildContext context) {
-    return _buildMultipleChoice(context); // Same as multiple choice
   }
 
   Widget _buildDropdown(BuildContext context) {

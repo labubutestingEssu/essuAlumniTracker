@@ -1074,11 +1074,8 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       case QuestionType.textArea:
         icon = Icons.text_snippet;
         break;
-      case QuestionType.singleChoice:
-        icon = Icons.radio_button_checked;
-        break;
       case QuestionType.multipleChoice:
-        icon = Icons.check_box;
+        icon = Icons.radio_button_checked;
         break;
       case QuestionType.dropdown:
         icon = Icons.arrow_drop_down;
@@ -1626,10 +1623,8 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
          return 'Short Answer';
        case QuestionType.textArea:
          return 'Paragraph';
-       case QuestionType.singleChoice:
-         return 'Multiple Choice';
        case QuestionType.multipleChoice:
-         return 'Multiple Choice';
+         return 'Radio Buttons';
        case QuestionType.checkboxList:
          return 'Checkboxes';
        case QuestionType.dropdown:
@@ -2316,7 +2311,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
 
   bool _needsOptions(QuestionType type) {
     return [
-      QuestionType.singleChoice,
+      QuestionType.multipleChoice,
       QuestionType.multipleChoice,
       QuestionType.checkboxList,
       QuestionType.dropdown,
@@ -2780,7 +2775,7 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
 
   bool _needsOptions(QuestionType type) {
     return [
-      QuestionType.singleChoice,
+      QuestionType.multipleChoice,
       QuestionType.multipleChoice,
       QuestionType.checkboxList,
       QuestionType.dropdown,
@@ -2796,10 +2791,8 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
         return 'Short Answer';
       case QuestionType.textArea:
         return 'Paragraph';
-      case QuestionType.singleChoice:
-        return 'Multiple Choice';
       case QuestionType.multipleChoice:
-        return 'Multiple Choice';
+        return 'Radio Buttons';
       case QuestionType.checkboxList:
         return 'Checkboxes';
       case QuestionType.dropdown:

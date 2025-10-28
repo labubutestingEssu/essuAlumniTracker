@@ -110,8 +110,8 @@ Based on your initial survey, the system supports:
 1. **Section Headers** - Organize questions into logical groups
 2. **Text Input** - Short text responses (names, addresses)
 3. **Text Area** - Long text responses (suggestions, comments)
-4. **Single Choice** - Radio buttons (sex, civil status, employment status)
-5. **Multiple Choice** - Checkboxes (job search methods, skills)
+4. **Multiple Choice** - Radio buttons (sex, civil status, employment status)
+5. **Checkbox List** - Checkboxes (job search methods, skills)
 6. **Dropdown** - Select lists (college degree, organization type)
 7. **Rating** - Slider or star ratings (curriculum relevance)
 8. **Date Input** - Date picker (date of birth)

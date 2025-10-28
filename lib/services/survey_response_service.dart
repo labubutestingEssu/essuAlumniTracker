@@ -252,7 +252,7 @@ class SurveyResponseService {
       Map<String, dynamic> analytics = {};
       
       switch (questionType) {
-        case QuestionType.singleChoice:
+        case QuestionType.multipleChoice:
         case QuestionType.dropdown:
           Map<String, int> optionCounts = {};
           for (var response in responses) {
@@ -262,13 +262,12 @@ class SurveyResponseService {
             }
           }
           analytics = {
-            'type': 'singleChoice',
+            'type': 'multipleChoice',
             'totalResponses': responses.length,
             'optionCounts': optionCounts,
           };
           break;
           
-        case QuestionType.multipleChoice:
         case QuestionType.checkboxList:
           Map<String, int> optionCounts = {};
           for (var response in responses) {

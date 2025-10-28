@@ -103,7 +103,11 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
       
       for (var question in questions) {
         final sectionId = question.sectionId ?? question.getSectionIdFromQuestionId();
-        print('DEBUG: Question ${question.id} (setId:${question.setId}) (${question.type}) - section: $sectionId, order: ${question.order}');
+        print('debugForm: Question ${question.id} (setId:${question.setId}) (${question.type}) - section: $sectionId, order: ${question.order}');
+        if (question.type == QuestionType.multipleChoice) {
+          print('debugForm: Multiple choice options: ${question.options}');
+          print('debugForm: Multiple choice required: ${question.isRequired}');
+        }
       }
       
       // Update questions that need dynamic options from database
@@ -270,7 +274,7 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
               }
               
               // Radio/Single choice fields for Year Graduated
-              else if (question.type == QuestionType.singleChoice) {
+              else if (question.type == QuestionType.multipleChoice) {
                 if (title.contains('YEAR') && title.contains('GRADUATED')) {
                   userValue = userProfile['batchYear'];
                 }
@@ -566,16 +570,33 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
 
   bool _isQuestionAnswered(String questionId) {
     final value = _responses[questionId];
-    if (value == null) return false;
+    print('debugForm: Checking if question $questionId is answered: value=$value');
+    
+    if (value == null) {
+      print('debugForm: Question $questionId NOT answered - value is null');
+      return false;
+    }
     
     // Handle bypass structure for name fields
     if (value is Map) {
       final actualValue = value['value']?.toString() ?? '';
-      return actualValue.isNotEmpty;
+      final answered = actualValue.isNotEmpty;
+      print('debugForm: Question $questionId answered (Map): $answered (actualValue: $actualValue)');
+      return answered;
     }
     
-    if (value is String) return value.isNotEmpty;
-    if (value is List) return value.isNotEmpty;
+    if (value is String) {
+      final answered = value.isNotEmpty;
+      print('debugForm: Question $questionId answered (String): $answered (value: $value)');
+      return answered;
+    }
+    if (value is List) {
+      final answered = value.isNotEmpty;
+      print('debugForm: Question $questionId answered (List): $answered (value: $value)');
+      return answered;
+    }
+    
+    print('debugForm: Question $questionId answered (other): true');
     return true;
   }
 
@@ -972,13 +993,34 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
       q.isRequired && q.type != QuestionType.section && q.shouldShow(_responses)
     );
     
+    print('debugForm: Checking section $sectionId completion:');
+    print('debugForm: Section questions: ${sectionQuestions.length}');
+    print('debugForm: Required questions: ${requiredQuestions.length}');
+    
+    // If there are no required questions, check if any questions are answered
+    if (requiredQuestions.isEmpty) {
+      final answeredQuestions = sectionQuestions.where((q) => 
+        q.type != QuestionType.section && q.shouldShow(_responses) && _isQuestionAnswered(q.id)
+      );
+      print('debugForm: No required questions, checking answered questions: ${answeredQuestions.length}');
+      final completed = answeredQuestions.isNotEmpty;
+      print('debugForm: Section $sectionId completion (no required): $completed');
+      return completed;
+    }
+    
     for (var question in requiredQuestions) {
-      if (!_isQuestionAnswered(question.id)) {
+      final isAnswered = _isQuestionAnswered(question.id);
+      final response = _responses[question.id];
+      print('debugForm: Question ${question.id} (${question.title}): answered=$isAnswered, response=$response');
+      if (!isAnswered) {
+        print('debugForm: Section $sectionId NOT completed - question ${question.id} not answered');
         return false;
       }
     }
     
-    return requiredQuestions.isNotEmpty;
+    final completed = requiredQuestions.isNotEmpty;
+    print('debugForm: Section $sectionId completion: $completed');
+    return completed;
   }
 
   bool _isSectionAccessible(int sectionIndex) {
@@ -1002,8 +1044,10 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
     final currentQuestions = _currentPageQuestions;
     final widgets = <Widget>[];
     
+    print('debugForm: Building current page questions: ${currentQuestions.length}');
     for (int i = 0; i < currentQuestions.length; i++) {
       final question = currentQuestions[i];
+      print('debugForm: Building question ${question.id} (${question.title}) - type: ${question.type}, required: ${question.isRequired}');
       
       widgets.add(
         Padding(
@@ -1014,6 +1058,7 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
             question: question,
             currentValue: _responses[question.id],
             onChanged: (value) async {
+              print('debugForm: Question ${question.id} (${question.title}) changed to: $value');
               setState(() {
                 _responses[question.id] = value;
                 _validationErrors.remove(question.id);
@@ -1021,6 +1066,7 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
                 // Clear responses for questions that are no longer visible due to conditional logic
                 _clearHiddenQuestionResponses();
               });
+              print('debugForm: Updated responses: $_responses');
               
               // Handle consent question - if user selects "No", show confirmation and exit
               if (question.title.contains('Do you want to continue with the survey') && value == 'No') {
@@ -1189,11 +1235,15 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
   bool _canProceedToNext() {
     // Check if current section is completed
     if (_sections.isEmpty || _currentSectionIndex >= _sections.length) {
+      print('debugForm: No sections available or invalid section index');
       return false;
     }
     
     final currentSectionId = _sections[_currentSectionIndex];
-    return _isSectionCompleted(currentSectionId);
+    print('debugForm: Checking if can proceed from section $currentSectionId');
+    final canProceed = _isSectionCompleted(currentSectionId);
+    print('debugForm: Can proceed to next: $canProceed');
+    return canProceed;
   }
 
   bool _canSubmitSurvey() {

@@ -4,7 +4,6 @@ import '../utils/batch_year_utils.dart';
 enum QuestionType {
   textInput,
   textArea,
-  singleChoice,
   multipleChoice,
   rating,
   checkboxList,
@@ -225,7 +224,7 @@ class SurveyQuestionModel {
         id: 'consent',
         title: 'Do you want to continue with the survey?',
         description: 'In compliance with RA 10173 or the Data Protection Act of 2012 (DPA of 2012), we are detailing the processing of the data you will provide.',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 2,
         sectionId: 'section_privacy',
@@ -325,7 +324,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'sex',
         title: 'SEX',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 9,
         sectionId: 'section_personal',
@@ -353,7 +352,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'religion',
         title: 'RELIGION',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 11,
         sectionId: 'section_personal',
@@ -375,7 +374,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'civil_status',
         title: 'CIVIL STATUS',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 12,
         sectionId: 'section_personal',
@@ -432,7 +431,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'year_graduated',
         title: 'Year Graduated',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 16,
         sectionId: 'section_education',
@@ -519,7 +518,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'currently_employed',
         title: 'Are you presently employed?',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 25,
         sectionId: 'section_employment',
@@ -562,7 +561,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'organization_type',
         title: 'Type of Organization',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 38,
         sectionId: 'section_self_employment',
@@ -576,7 +575,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'employment_status',
         title: 'Employment Status',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 39,
         sectionId: 'section_self_employment',
@@ -597,7 +596,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'employment_type',
         title: 'Employment Type',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 40,
         sectionId: 'section_self_employment',
@@ -625,7 +624,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'monthly_income',
         title: 'Monthly Income Range',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 42,
         sectionId: 'section_self_employment',
@@ -646,7 +645,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'job_related_to_degree',
         title: 'Is your current job related to the degree program you took up in college?',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 43,
         sectionId: 'section_self_employment',
@@ -660,7 +659,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'first_job_after_college',
         title: 'Is this your first job after College?',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: true,
         order: 44,
         sectionId: 'section_self_employment',
@@ -704,7 +703,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'self_employment_years',
         title: 'Number of Years',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: false,
         order: 46,
         sectionId: 'section_self_employment',
@@ -718,7 +717,7 @@ class SurveyQuestionModel {
       SurveyQuestionModel(
         id: 'self_employment_income',
         title: 'Monthly Income Range',
-        type: QuestionType.singleChoice,
+        type: QuestionType.multipleChoice,
         isRequired: false,
         order: 47,
         sectionId: 'section_self_employment',
