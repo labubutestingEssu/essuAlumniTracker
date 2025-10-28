@@ -9,6 +9,7 @@ import 'dart:convert';
 import '../../models/survey_response_model.dart';
 import '../../models/survey_question_model.dart';
 import '../../models/course_model.dart';
+import '../../models/user_model.dart';
 import '../../services/survey_response_service.dart';
 import '../../services/survey_question_service.dart';
 import '../../services/user_service.dart';
@@ -36,6 +37,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
   
   List<SurveyResponseModel> _surveyResponses = [];
   List<SurveyQuestionModel> _questions = [];
+  Map<String, UserModel> _usersByUid = {}; // Map of userId to UserModel for displaying names
   
   bool _isLoading = false;
   bool _isAdmin = false;
@@ -176,9 +178,28 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
       }
       
       final responses = await _surveyResponseService.getAllSurveyResponses();
+      
+      // Load all users to get their names
+      final allUserIds = responses.map((r) => r.userUid).where((uid) => uid.isNotEmpty).toSet();
+      print('Loading ${allUserIds.length} users for survey responses...');
+      
+      final Map<String, UserModel> usersByUid = {};
+      for (final uid in allUserIds) {
+        try {
+          final user = await _userService.getUserById(uid, isAdmin: true);
+          if (user != null) {
+            usersByUid[uid] = user;
+          }
+        } catch (e) {
+          print('Error loading user $uid: $e');
+        }
+      }
+      
+      print('Loaded ${usersByUid.length} user profiles');
 
       setState(() {
         _surveyResponses = _filterSurveyResponses(responses);
+        _usersByUid = usersByUid;
       });
     } catch (e) {
       setState(() {
@@ -602,6 +623,12 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
   }
 
   Widget _buildSurveyResponseCard(SurveyResponseModel response) {
+    // Get the user's actual name from the loaded user data
+    final user = _usersByUid[response.userUid];
+    final displayName = user != null 
+        ? '${user.firstName} ${user.middleName ?? ''} ${user.lastName} ${user.suffix ?? ''}'.replaceAll(RegExp(r'\s+'), ' ').trim()
+        : (response.fullName.isNotEmpty ? response.fullName : 'Unknown User');
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -614,7 +641,7 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
           ),
         ),
         title: Text(
-          response.fullName,
+          displayName,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
@@ -656,8 +683,14 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
 
 
   Widget _buildSurveyResponseDetails(SurveyResponseModel response) {
+    // Get the user's actual name
+    final user = _usersByUid[response.userUid];
+    final displayName = user != null 
+        ? '${user.firstName} ${user.middleName ?? ''} ${user.lastName} ${user.suffix ?? ''}'.replaceAll(RegExp(r'\s+'), ' ').trim()
+        : (response.fullName.isNotEmpty ? response.fullName : 'Unknown User');
+    
     // Debug: Print response question IDs
-    print('\n=== DISPLAYING RESPONSE: ${response.fullName} ===');
+    print('\n=== DISPLAYING RESPONSE: $displayName (userUid: ${response.userUid}) ===');
     print('Response has ${response.responses.length} answers');
     print('Available questions in memory: ${_questions.length}');
     print('Sample response question IDs (first 5):');
@@ -913,10 +946,16 @@ class _SurveyDataViewerScreenState extends State<SurveyDataViewerScreen> {
       
       // Add data rows using filtered responses
       for (final response in filteredResponses) {
+        // Get the user's actual name from the loaded user data
+        final user = _usersByUid[response.userUid];
+        final displayName = user != null 
+            ? '${user.firstName} ${user.middleName ?? ''} ${user.lastName} ${user.suffix ?? ''}'.replaceAll(RegExp(r'\s+'), ' ').trim()
+            : (response.fullName.isNotEmpty ? response.fullName : 'Unknown User');
+        
         final row = [
           response.id,
           response.userId,
-          response.fullName,
+          displayName,
           response.college,
           response.course,
           BatchYearUtils.batchYearToSchoolYear(response.batchYear),
