@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
 import '../../models/survey_question_model.dart';
 import '../../services/survey_question_service.dart';
+import '../../services/excel_import_export_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/responsive_screen_wrapper.dart';
 import '../../utils/responsive.dart';
@@ -645,6 +647,56 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
     return Row(
       children: [
         if (!_isBatchEditMode) ...[
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.import_export),
+            tooltip: 'Import/Export',
+            onSelected: (value) {
+              switch (value) {
+                case 'download_template':
+                  _downloadExcelTemplate();
+                  break;
+                case 'import_excel':
+                  _importQuestionsFromExcel();
+                  break;
+                case 'export_excel':
+                  _exportCurrentSetToExcel();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'download_template',
+                child: Row(
+                  children: [
+                    Icon(Icons.download, size: 20),
+                    SizedBox(width: 8),
+                    Text('Download Template'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'import_excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file, size: 20),
+                    SizedBox(width: 8),
+                    Text('Import Questions'),
+                  ],
+                ),
+              ),
+              if (_questions.isNotEmpty)
+                const PopupMenuItem(
+                  value: 'export_excel',
+                  child: Row(
+                    children: [
+                      Icon(Icons.file_download, size: 20),
+                      SizedBox(width: 8),
+                      Text('Export Current Set'),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             onPressed: _initializeDefaultQuestions,
             icon: const Icon(Icons.restore),
@@ -2281,6 +2333,234 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+
+  // ==================== EXCEL IMPORT/EXPORT ====================
+
+  Future<void> _downloadExcelTemplate() async {
+    try {
+      final bytes = await ExcelImportExportService.generateTemplate();
+      
+      // Download file
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', 'ESSU_Question_Template.xlsx')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      _showSuccessSnackBar('Template downloaded successfully');
+    } catch (e) {
+      _showErrorSnackBar('Error downloading template: $e');
+    }
+  }
+
+  Future<void> _importQuestionsFromExcel() async {
+    try {
+      // Parse Excel file
+      final result = await ExcelImportExportService.pickAndParseExcelFile();
+      
+      if (result == null) {
+        // User cancelled
+        return;
+      }
+      
+      final questions = result['questions'] as List<Map<String, dynamic>>;
+      final errors = result['errors'] as List<String>;
+      final totalRows = result['totalRows'] as int;
+      
+      // Show validation dialog
+      if (errors.isNotEmpty || questions.isEmpty) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 8),
+                const Text('Import Validation Errors'),
+              ],
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.6,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Found ${questions.length} valid questions out of $totalRows rows'),
+                  const SizedBox(height: 16),
+                  if (errors.isNotEmpty) ...[
+                    const Text('Errors:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: errors.map((error) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text('• $error', style: TextStyle(color: Colors.red.shade700)),
+                          )).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (questions.isEmpty)
+                    const Text(
+                      '\nNo valid questions found. Please fix the errors and try again.',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      
+      // Show import dialog with set name
+      final setNameController = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Import Questions'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Successfully parsed ${questions.length} questions from Excel file.'),
+              const SizedBox(height: 16),
+              const Text(
+                'A new question set will be created.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: setNameController,
+                decoration: const InputDecoration(
+                  labelText: 'New Set Name',
+                  hintText: 'e.g., Imported Survey 2024',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirmed != true || setNameController.text.isEmpty) {
+        return;
+      }
+      
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  'Importing ${questions.length} questions...\nThis may take a moment.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      
+      try {
+        // Generate new set ID
+        final maxSetNumber = _availableSets
+            .where((id) => id.startsWith('set_'))
+            .map((id) => int.tryParse(id.replaceAll('set_', '')) ?? 0)
+            .fold(0, (max, num) => num > max ? num : max);
+        
+        final newSetId = 'set_${maxSetNumber + 1}';
+        final newSetDisplayName = setNameController.text;
+        
+        // Create questions
+        final questionModels = ExcelImportExportService.createQuestionsFromParsedData(
+          questions,
+          newSetId,
+        );
+        
+        // Save all questions to Firestore
+        for (final question in questionModels) {
+          await _questionService.createQuestion(question);
+        }
+        
+        // Save set display name
+        await _questionService.updateSetDisplayName(newSetId, newSetDisplayName);
+        
+        // Close loading dialog
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        
+        // Reload and switch to new set
+        await _loadQuestionSetsAndQuestions();
+        await _changeCurrentSet(newSetId);
+        
+        _showSuccessSnackBar(
+          'Successfully imported ${questionModels.length} questions to "$newSetDisplayName"'
+        );
+      } catch (e) {
+        // Close loading dialog
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        _showErrorSnackBar('Error importing questions: $e');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error processing Excel file: $e');
+    }
+  }
+
+  Future<void> _exportCurrentSetToExcel() async {
+    if (_currentSetId == null || _questions.isEmpty) {
+      _showErrorSnackBar('No questions to export');
+      return;
+    }
+    
+    try {
+      final setName = _setNames[_currentSetId] ?? _currentSetId!;
+      final bytes = await ExcelImportExportService.exportQuestionsToExcel(_questions, setName);
+      
+      // Download file
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final fileName = '${setName.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      _showSuccessSnackBar('${_questions.length} questions exported successfully');
+    } catch (e) {
+      _showErrorSnackBar('Error exporting questions: $e');
+    }
   }
 
   @override
