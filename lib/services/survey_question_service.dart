@@ -6,14 +6,19 @@ import 'course_service.dart';
 class SurveyQuestionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'survey_questions';
+  final String _settingsDocId = '_settings'; // Special doc in same collection for settings
   final CourseService _courseService = CourseService();
 
-  // Get all active survey questions ordered by order
-  Future<List<SurveyQuestionModel>> getActiveQuestions() async {
+  // Get all active survey questions ordered by order (from active question set)
+  Future<List<SurveyQuestionModel>> getActiveQuestions({String? setId}) async {
     try {
+      // If no setId provided, use 'set_1' as default
+      final targetSetId = setId ?? 'set_1';
+      
       QuerySnapshot querySnapshot = await _firestore
           .collection(_collection)
           .where('isActive', isEqualTo: true)
+          .where('setId', isEqualTo: targetSetId)
           .orderBy('order')
           .get();
 
@@ -29,9 +34,11 @@ class SurveyQuestionService {
       if (e.toString().contains('index') || e.toString().contains('building')) {
         print('Index still building, trying fallback query...');
         try {
+          final targetSetId = setId ?? 'set_1';
           QuerySnapshot fallbackSnapshot = await _firestore
               .collection(_collection)
               .where('isActive', isEqualTo: true)
+              .where('setId', isEqualTo: targetSetId)
               .get();
 
           final questions = fallbackSnapshot.docs
@@ -53,18 +60,49 @@ class SurveyQuestionService {
   }
 
   // Get all questions (including inactive) for admin management
-  Future<List<SurveyQuestionModel>> getAllQuestions() async {
+  Future<List<SurveyQuestionModel>> getAllQuestions({String? setId}) async {
     try {
-      QuerySnapshot querySnapshot = await _firestore
-          .collection(_collection)
-          .orderBy('order')
-          .get();
+      Query query = _firestore.collection(_collection);
+      
+      // Filter by setId if provided
+      if (setId != null) {
+        query = query.where('setId', isEqualTo: setId);
+      }
+      
+      QuerySnapshot querySnapshot = await query.orderBy('order').get();
 
       return querySnapshot.docs
           .map((doc) => SurveyQuestionModel.fromFirestore(doc))
           .toList();
     } catch (e) {
       print('Error getting all questions: $e');
+      
+      // Fallback: If index is not built yet, fetch without orderBy and sort manually
+      if (e.toString().contains('index') || e.toString().contains('requires an index')) {
+        print('📋 Index not ready, using fallback query...');
+        try {
+          Query fallbackQuery = _firestore.collection(_collection);
+          
+          if (setId != null) {
+            fallbackQuery = fallbackQuery.where('setId', isEqualTo: setId);
+          }
+          
+          QuerySnapshot fallbackSnapshot = await fallbackQuery.get();
+          
+          final questions = fallbackSnapshot.docs
+              .map((doc) => SurveyQuestionModel.fromFirestore(doc))
+              .toList();
+          
+          // Sort manually by order
+          questions.sort((a, b) => a.order.compareTo(b.order));
+          
+          print('✅ Fallback query successful, got ${questions.length} questions');
+          return questions;
+        } catch (fallbackError) {
+          print('❌ Fallback query also failed: $fallbackError');
+        }
+      }
+      
       return [];
     }
   }
@@ -222,11 +260,11 @@ class SurveyQuestionService {
   // Initialize survey with default questions from your initial survey
   Future<void> initializeDefaultQuestions() async {
     try {
-      // Check if questions already exist
-      final existingQuestions = await getAllQuestions();
+      // Check if questions already exist in set_1
+      final existingQuestions = await getAllQuestions(setId: 'set_1');
       
       if (existingQuestions.isNotEmpty) {
-        print('Survey questions already exist (${existingQuestions.length} questions). Skipping initialization.');
+        print('Survey questions already exist in set_1 (${existingQuestions.length} questions). Skipping initialization.');
         return;
       }
 
@@ -243,11 +281,26 @@ class SurveyQuestionService {
       
       for (var question in defaultQuestions) {
         final docRef = _firestore.collection(_collection).doc();
-        batch.set(docRef, question.toMap());
+        // Ensure the question has setId = 'set_1'
+        final questionData = question.toMap();
+        questionData['setId'] = 'set_1'; // Explicitly set to 'set_1'
+        batch.set(docRef, questionData);
       }
       
       await batch.commit();
-      print('Default survey questions initialized successfully (${defaultQuestions.length} questions created).');
+      print('Default survey questions initialized successfully (${defaultQuestions.length} questions created in set_1).');
+      
+      // Update the question count for set_1
+      try {
+        await _firestore.collection('question_sets').doc('set_1').update({
+          'questionCount': defaultQuestions.length,
+          'updatedAt': DateTime.now(),
+        });
+        print('Updated question count for set_1: ${defaultQuestions.length}');
+      } catch (e) {
+        print('Warning: Could not update question count for set_1: $e');
+        // Don't throw - questions were created successfully
+      }
     } catch (e) {
       print('Error initializing default questions: $e');
       throw Exception('Failed to initialize default questions: $e');
@@ -366,24 +419,6 @@ class SurveyQuestionService {
       print('❌ Error getting next order in section: $e');
       return await _getNextOrder(); // Fallback to global order
     }
-  }
-
-  // Get the base order number for a section based on its position
-  int _getBaseOrderForSection(String sectionId) {
-    // Define section order and their base orders (multiples of 100)
-    final sectionOrder = [
-      'section_privacy',    // order 100-199
-      'section_personal',   // order 200-299
-      'section_education',  // order 300-399
-      'section_employment', // order 400-499
-      'section_self_employment', // order 500-599
-    ];
-    
-    final index = sectionOrder.indexOf(sectionId);
-    if (index == -1) return 999; // Unknown section goes to end
-    
-    // Return base order: 100 for index 0, 200 for index 1, etc.
-    return (index + 1) * 100;
   }
 
   // Duplicate a question
@@ -551,8 +586,8 @@ class SurveyQuestionService {
   }
   
   /// Get all active questions with their dynamic options populated
-  Future<List<SurveyQuestionModel>> getActiveQuestionsWithDynamicOptions() async {
-    final questions = await getActiveQuestions();
+  Future<List<SurveyQuestionModel>> getActiveQuestionsWithDynamicOptions({String? setId}) async {
+    final questions = await getActiveQuestions(setId: setId);
     final questionsWithOptions = <SurveyQuestionModel>[];
     
     for (final question in questions) {
@@ -561,5 +596,300 @@ class SurveyQuestionService {
     }
     
     return questionsWithOptions;
+  }
+
+  /// Duplicate all questions from one set to another
+  Future<void> duplicateQuestionsToSet(String sourceSetId, String targetSetId) async {
+    try {
+      print('🔄 Duplicating questions from $sourceSetId to $targetSetId');
+      
+      // Get all questions from source set
+      final sourceQuestions = await getAllQuestions(setId: sourceSetId);
+      
+      if (sourceQuestions.isEmpty) {
+        print('⚠️ No questions found in source set $sourceSetId');
+        return;
+      }
+      
+      print('📝 Found ${sourceQuestions.length} questions to duplicate');
+      
+      WriteBatch batch = _firestore.batch();
+      int count = 0;
+      
+      for (var question in sourceQuestions) {
+        final docRef = _firestore.collection(_collection).doc();
+        final duplicatedQuestion = question.copyWith(
+          id: docRef.id, // This won't be used in toMap but good for reference
+          setId: targetSetId,
+          createdAt: DateTime.now(),
+          updatedAt: null,
+        );
+        
+        batch.set(docRef, duplicatedQuestion.toMap());
+        count++;
+        
+        // Firestore batch has a limit of 500 operations
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _firestore.batch();
+        }
+      }
+      
+      // Commit remaining operations
+      if (count % 500 != 0) {
+        await batch.commit();
+      }
+      
+      print('✅ Successfully duplicated $count questions to $targetSetId');
+    } catch (e) {
+      print('❌ Error duplicating questions to set: $e');
+      throw Exception('Failed to duplicate questions: $e');
+    }
+  }
+
+  /// Get question count for a specific set
+  Future<int> getQuestionCountForSet(String setId) async {
+    try {
+      final questions = await getAllQuestions(setId: setId);
+      return questions.length;
+    } catch (e) {
+      print('Error getting question count for set: $e');
+      return 0;
+    }
+  }
+
+  /// Delete all questions in a set
+  Future<void> deleteAllQuestionsInSet(String setId) async {
+    try {
+      print('🗑️ Deleting all questions in set $setId');
+      
+      final questions = await getAllQuestions(setId: setId);
+      
+      if (questions.isEmpty) {
+        print('⚠️ No questions found in set $setId');
+        return;
+      }
+      
+      WriteBatch batch = _firestore.batch();
+      int count = 0;
+      
+      for (var question in questions) {
+        final docRef = _firestore.collection(_collection).doc(question.id);
+        batch.delete(docRef);
+        count++;
+        
+        // Firestore batch has a limit of 500 operations
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _firestore.batch();
+        }
+      }
+      
+      // Commit remaining operations
+      if (count % 500 != 0) {
+        await batch.commit();
+      }
+      
+      print('✅ Successfully deleted $count questions from $setId');
+    } catch (e) {
+      print('❌ Error deleting questions in set: $e');
+      throw Exception('Failed to delete questions: $e');
+    }
+  }
+
+  // ==================== SET MANAGEMENT (NO SEPARATE COLLECTION) ====================
+  
+  /// Get all available set IDs from questions
+  Future<List<String>> getAvailableSets() async {
+    try {
+      final querySnapshot = await _firestore.collection(_collection).get();
+      
+      // Extract unique setIds
+      final setIds = <String>{};
+      for (var doc in querySnapshot.docs) {
+        // Skip the settings document
+        if (doc.id == _settingsDocId) continue;
+        
+        final data = doc.data();
+        final setId = data['setId'] as String?;
+        if (setId != null && setId.isNotEmpty) {
+          setIds.add(setId);
+        }
+      }
+      
+      // Sort with set_1 first
+      final sortedSetIds = setIds.toList()..sort((a, b) {
+        if (a == 'set_1') return -1;
+        if (b == 'set_1') return 1;
+        return a.compareTo(b);
+      });
+      
+      print('📋 Found ${sortedSetIds.length} sets: $sortedSetIds');
+      return sortedSetIds;
+    } catch (e) {
+      print('❌ Error getting available sets: $e');
+      return ['set_1']; // Always return at least set_1
+    }
+  }
+  
+  /// Get the active set ID (from settings)
+  Future<String> getActiveSetId() async {
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data();
+        final activeSetId = data?['activeSetId'] as String?;
+        if (activeSetId != null && activeSetId.isNotEmpty) {
+          print('✅ Active set ID: $activeSetId');
+          return activeSetId;
+        }
+      }
+      
+      // Default to set_1
+      print('📝 No active set found, defaulting to set_1');
+      return 'set_1';
+    } catch (e) {
+      print('❌ Error getting active set: $e');
+      return 'set_1';
+    }
+  }
+  
+  /// Set the active set ID
+  Future<void> setActiveSetId(String setId) async {
+    try {
+      await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .set({
+        'activeSetId': setId,
+        'updatedAt': DateTime.now(),
+      }, SetOptions(merge: true));
+      
+      print('✅ Active set changed to: $setId');
+    } catch (e) {
+      print('❌ Error setting active set: $e');
+      rethrow;
+    }
+  }
+  
+  /// Get question count for each set
+  Future<Map<String, int>> getQuestionCountPerSet() async {
+    try {
+      final querySnapshot = await _firestore.collection(_collection).get();
+      
+      final counts = <String, int>{};
+      for (var doc in querySnapshot.docs) {
+        // Skip the settings document
+        if (doc.id == _settingsDocId) continue;
+        
+        final data = doc.data();
+        final setId = data['setId'] as String?;
+        if (setId != null && setId.isNotEmpty) {
+          counts[setId] = (counts[setId] ?? 0) + 1;
+        }
+      }
+      
+      print('📊 Question counts: $counts');
+      return counts;
+    } catch (e) {
+      print('❌ Error getting question counts: $e');
+      return {};
+    }
+  }
+  
+  /// Get or create display name for a set
+  Future<String> getSetDisplayName(String setId) async {
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data();
+        final setNames = data?['setNames'] as Map<String, dynamic>?;
+        if (setNames != null && setNames.containsKey(setId)) {
+          return setNames[setId] as String;
+        }
+      }
+      
+      // Default names
+      if (setId == 'set_1') return 'Set 1 (Default)';
+      return 'Set ${setId.replaceAll('set_', '')}';
+    } catch (e) {
+      print('❌ Error getting set name: $e');
+      return setId;
+    }
+  }
+  
+  /// Update display name for a set
+  Future<void> updateSetDisplayName(String setId, String displayName) async {
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .get();
+      
+      Map<String, dynamic> setNames = {};
+      if (doc.exists) {
+        final data = doc.data();
+        setNames = Map<String, dynamic>.from(data?['setNames'] ?? {});
+      }
+      
+      setNames[setId] = displayName;
+      
+      await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .set({
+        'setNames': setNames,
+        'updatedAt': DateTime.now(),
+      }, SetOptions(merge: true));
+      
+      print('✅ Set name updated: $setId -> $displayName');
+    } catch (e) {
+      print('❌ Error updating set name: $e');
+      rethrow;
+    }
+  }
+  
+  /// Check if a set can be deleted (not set_1 and not active)
+  Future<bool> canDeleteSet(String setId) async {
+    if (setId == 'set_1') return false;
+    
+    final activeSetId = await getActiveSetId();
+    return setId != activeSetId;
+  }
+  
+  /// Initialize default survey settings
+  Future<void> initializeSurveySettings() async {
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(_settingsDocId)
+          .get();
+      
+      if (!doc.exists) {
+        await _firestore
+            .collection(_collection)
+            .doc(_settingsDocId)
+            .set({
+          'activeSetId': 'set_1',
+          'setNames': {
+            'set_1': 'Set 1 (Default)',
+          },
+          'createdAt': DateTime.now(),
+          'updatedAt': DateTime.now(),
+        });
+        
+        print('✅ Survey settings initialized in survey_questions/_settings');
+      }
+    } catch (e) {
+      print('❌ Error initializing survey settings: $e');
+    }
   }
 } 

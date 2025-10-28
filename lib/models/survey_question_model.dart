@@ -23,6 +23,7 @@ class SurveyQuestionModel {
   final bool isRequired;
   final int order;
   final String? sectionId; // Section identifier (e.g., 'section_personal', 'section_education')
+  final String setId; // Question set identifier (e.g., 'set_1', 'set_2')
   final Map<String, dynamic> configuration; // Flexible configuration for different question types
   final List<String> options; // For single/multiple choice, dropdown, checkboxes
   final Map<String, String> validation; // Validation rules
@@ -39,6 +40,7 @@ class SurveyQuestionModel {
     required this.isRequired,
     required this.order,
     this.sectionId,
+    this.setId = 'set_1', // Default to set_1 for backward compatibility
     required this.configuration,
     required this.options,
     required this.validation,
@@ -63,6 +65,7 @@ class SurveyQuestionModel {
       isRequired: data['isRequired'] ?? false,
       order: data['order'] ?? 0,
       sectionId: data['sectionId'],
+      setId: data['setId'] ?? 'set_1', // Default to set_1 for backward compatibility
       configuration: Map<String, dynamic>.from(data['configuration'] ?? {}),
       options: List<String>.from(data['options'] ?? []),
       validation: Map<String, String>.from(data['validation'] ?? {}),
@@ -84,6 +87,7 @@ class SurveyQuestionModel {
       'isRequired': isRequired,
       'order': order,
       'sectionId': sectionId,
+      'setId': setId,
       'configuration': configuration,
       'options': options,
       'validation': validation,
@@ -103,6 +107,7 @@ class SurveyQuestionModel {
     bool? isRequired,
     int? order,
     String? sectionId,
+    String? setId,
     Map<String, dynamic>? configuration,
     List<String>? options,
     Map<String, String>? validation,
@@ -119,6 +124,7 @@ class SurveyQuestionModel {
       isRequired: isRequired ?? this.isRequired,
       order: order ?? this.order,
       sectionId: sectionId ?? this.sectionId,
+      setId: setId ?? this.setId,
       configuration: configuration ?? this.configuration,
       options: options ?? this.options,
       validation: validation ?? this.validation,
@@ -415,6 +421,7 @@ class SurveyQuestionModel {
         type: QuestionType.section,
         isRequired: false,
         order: 15,
+        sectionId: 'section_education',
         configuration: {'showDivider': true},
         options: [],
         validation: {},
@@ -501,6 +508,7 @@ class SurveyQuestionModel {
         type: QuestionType.section,
         isRequired: false,
         order: 24,
+        sectionId: 'section_employment',
         configuration: {'showDivider': true},
         options: [],
         validation: {},

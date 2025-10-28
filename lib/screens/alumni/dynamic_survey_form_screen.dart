@@ -59,10 +59,14 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Load active questions, courses, and user profile in parallel
+      // Get the active question set ID
+      final activeSetId = await _surveyQuestionService.getActiveSetId();
+      print('DEBUG: Loading questions from active set: $activeSetId');
+      
+      // Load active questions from the active set, courses, and user profile in parallel
       final currentUser = _authService.currentUser;
       final futures = await Future.wait([
-        _surveyQuestionService.getActiveQuestions(),
+        _surveyQuestionService.getActiveQuestions(setId: activeSetId),
         _courseService.getAllCourses(),
         if (currentUser != null) _authService.getUserData(currentUser.uid) else Future.value(null),
       ]);
@@ -71,12 +75,35 @@ class _DynamicSurveyFormScreenState extends State<DynamicSurveyFormScreen> {
       final courses = futures[1] as List<Course>;
       final userProfile = futures[2] as Map<String, dynamic>?;
       
-      print('DEBUG: Loaded ${questions.length} questions and ${courses.length} courses');
+      print('DEBUG: Loaded ${questions.length} questions from set "$activeSetId" and ${courses.length} courses');
       
-      // Debug: Print all loaded questions with their sections
+      // Debug: Print all loaded questions with their set IDs and sections
+      final questionSetIds = questions.map((q) => q.setId).toSet();
+      print('DEBUG: Questions belong to sets: $questionSetIds');
+      
+      if (questionSetIds.length > 1) {
+        print('⚠️ WARNING: Questions from multiple sets detected!');
+        for (var setId in questionSetIds) {
+          final countInSet = questions.where((q) => q.setId == setId).length;
+          print('  - Set "$setId": $countInSet questions');
+        }
+      }
+      
+      // Check for duplicate question IDs
+      final questionIds = questions.map((q) => q.id).toList();
+      final uniqueIds = questionIds.toSet();
+      if (questionIds.length != uniqueIds.length) {
+        print('⚠️ WARNING: Duplicate question IDs detected!');
+        final duplicates = questionIds.where((id) => questionIds.where((x) => x == id).length > 1).toSet();
+        for (var dupId in duplicates) {
+          final count = questionIds.where((id) => id == dupId).length;
+          print('  - Question ID "$dupId" appears $count times');
+        }
+      }
+      
       for (var question in questions) {
         final sectionId = question.sectionId ?? question.getSectionIdFromQuestionId();
-        print('DEBUG: Question ${question.id} (${question.type}) - section: $sectionId, order: ${question.order}');
+        print('DEBUG: Question ${question.id} (setId:${question.setId}) (${question.type}) - section: $sectionId, order: ${question.order}');
       }
       
       // Update questions that need dynamic options from database

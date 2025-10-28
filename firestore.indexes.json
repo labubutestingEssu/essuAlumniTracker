@@ -159,6 +159,38 @@
       ]
     },
     {
+      "collectionGroup": "survey_questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "setId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "survey_questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "setId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "survey_responses",
       "queryScope": "COLLECTION",
       "fields": [

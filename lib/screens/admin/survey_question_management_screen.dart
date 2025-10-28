@@ -17,8 +17,15 @@ class SurveyQuestionManagementScreen extends StatefulWidget {
 
 class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagementScreen> {
   final SurveyQuestionService _questionService = SurveyQuestionService();
+  
   List<SurveyQuestionModel> _questions = [];
   List<SurveyQuestionModel> _editableQuestions = []; // For batch edit mode
+  List<String> _availableSets = [];
+  Map<String, int> _questionCounts = {};
+  Map<String, String> _setNames = {};
+  String? _currentSetId;
+  String? _activeSetId;
+  
   bool _isLoading = false;
   bool _isBatchEditMode = false;
   bool _isSaving = false;
@@ -38,23 +45,65 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    _loadQuestionSetsAndQuestions();
+  }
+
+  Future<void> _loadQuestionSetsAndQuestions() async {
+    setState(() => _isLoading = true);
+    try {
+      // Initialize survey settings
+      await _questionService.initializeSurveySettings();
+      
+      // Load available sets, active set, and question counts
+      final futures = await Future.wait([
+        _questionService.getAvailableSets(),
+        _questionService.getActiveSetId(),
+        _questionService.getQuestionCountPerSet(),
+      ]);
+      
+      final availableSets = futures[0] as List<String>;
+      final activeSetId = futures[1] as String;
+      final questionCounts = futures[2] as Map<String, int>;
+      
+      // Load display names for all sets
+      final setNames = <String, String>{};
+      for (final setId in availableSets) {
+        setNames[setId] = await _questionService.getSetDisplayName(setId);
+      }
+      
+      setState(() {
+        _availableSets = availableSets;
+        _activeSetId = activeSetId;
+        _questionCounts = questionCounts;
+        _setNames = setNames;
+        _currentSetId = activeSetId; // Default to active set
+      });
+      
+      // Load questions for the current set
+      await _loadQuestions();
+    } catch (e) {
+      _showErrorSnackBar('Error loading question sets: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadQuestions() async {
-    setState(() => _isLoading = true);
+    if (_currentSetId == null) return;
+    
     try {
-      final questions = await _questionService.getAllQuestions();
+      final questions = await _questionService.getAllQuestions(setId: _currentSetId);
       setState(() {
         _questions = questions;
         if (_isBatchEditMode) {
           _initializeBatchEditMode();
         }
       });
+      
+      // Update question count cache
+      _questionCounts[_currentSetId!] = questions.length;
     } catch (e) {
       _showErrorSnackBar('Error loading questions: $e');
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -292,36 +341,304 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   Widget _buildHeader(bool isDesktop) {
     return Padding(
       padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Survey Question Management',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isBatchEditMode 
+                          ? 'Batch Edit Mode: ${_editableQuestions.length} questions being edited'
+                          : 'Manage survey questions dynamically. Total: ${_questions.length} questions',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildActionButtons(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildActiveSetBanner(),
+          const SizedBox(height: 16),
+          _buildSetSelector(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveSetBanner() {
+    final activeSetDisplayName = _setNames[_activeSetId] ?? _activeSetId ?? 'No Set';
+    final activeSetQuestionCount = _questionCounts[_activeSetId] ?? 0;
+    final isViewingActiveSet = _currentSetId == _activeSetId;
+    
+    // Don't show the banner if there are no questions yet (empty database)
+    if (_availableSets.isEmpty || (_availableSets.length == 1 && _availableSets.first == 'set_1' && activeSetQuestionCount == 0)) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade700, Colors.green.shade500],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
+          const Icon(Icons.public, color: Colors.white, size: 32),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Survey Question Management',
+                  '🌍 ACTIVE SET FOR ALL USERS',
                   style: TextStyle(
-                    fontSize: 24,
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  activeSetDisplayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
                 Text(
-                  _isBatchEditMode 
-                      ? 'Batch Edit Mode: ${_editableQuestions.length} questions being edited'
-                      : 'Manage survey questions dynamically. Total: ${_questions.length} questions',
+                  '$activeSetQuestionCount questions • Alumni will see this set in their survey',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13,
                   ),
                 ),
               ],
             ),
           ),
-          _buildActionButtons(),
+          if (!isViewingActiveSet && _activeSetId != null) ...[
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: () => _changeCurrentSet(_activeSetId!),
+              icon: const Icon(Icons.visibility),
+              label: const Text('View Active Set'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.green.shade700,
+              ),
+            ),
+          ],
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: _showSetManagementDialog,
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Change Active Set'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.2),
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white, width: 2),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildSetSelector() {
+    // Don't show the set selector if there are no questions yet (empty database)
+    if (_availableSets.isEmpty || (_availableSets.length == 1 && _availableSets.first == 'set_1' && (_questionCounts['set_1'] ?? 0) == 0)) {
+      return Card(
+        color: Colors.grey.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.grey.shade600),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No question sets yet. Initialize default questions or create a new set to get started.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _showCreateSetDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('New Set'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Safeguard: Ensure _currentSetId is in _availableSets, otherwise use first available set
+    final effectiveCurrentSetId = _availableSets.contains(_currentSetId) 
+        ? _currentSetId 
+        : (_availableSets.isNotEmpty ? _availableSets.first : null);
+    
+    return Card(
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(Icons.edit, color: Colors.blue.shade700),
+            const SizedBox(width: 12),
+            const Text(
+              'Editing Set:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '(Select which set to manage)',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: DropdownButton<String>(
+                value: effectiveCurrentSetId,
+                isExpanded: true,
+                items: _availableSets.map((setId) {
+                  final isActive = setId == _activeSetId;
+                  final isDefault = setId == 'set_1';
+                  final displayName = _setNames[setId] ?? setId;
+                  final questionCount = _questionCounts[setId] ?? 0;
+                  
+                  return DropdownMenuItem<String>(
+                    value: setId,
+                    child: Row(
+                      children: [
+                        Text(
+                          displayName,
+                          style: TextStyle(
+                            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'ACTIVE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (isDefault) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'DEFAULT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Text(
+                          '$questionCount questions',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    _changeCurrentSet(value);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: _showCreateSetDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('New Set'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _showSetManagementDialog,
+              icon: const Icon(Icons.settings),
+              tooltip: 'Manage Sets',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeCurrentSet(String setId) async {
+    setState(() {
+      _currentSetId = setId;
+      _isBatchEditMode = false; // Exit batch edit mode when changing sets
+    });
+    await _loadQuestions();
   }
 
   Widget _buildActionButtons() {
@@ -1347,11 +1664,328 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
      }
    }
 
+  Future<void> _showCreateSetDialog() async {
+    final nameController = TextEditingController();
+    bool copyFromExisting = false;
+    String? selectedSourceSetId;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Create New Question Set'),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Set Display Name',
+                      hintText: 'e.g., Alumni Survey 2024',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CheckboxListTile(
+                    title: const Text('Copy questions from existing set'),
+                    value: copyFromExisting,
+                    onChanged: (value) {
+                      setState(() {
+                        copyFromExisting = value ?? false;
+                        if (!copyFromExisting) {
+                          selectedSourceSetId = null;
+                        }
+                      });
+                    },
+                  ),
+                  if (copyFromExisting) ...[
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedSourceSetId,
+                      decoration: const InputDecoration(
+                        labelText: 'Source Set',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _availableSets.map((setId) {
+                        final displayName = _setNames[setId] ?? setId;
+                        final questionCount = _questionCounts[setId] ?? 0;
+                        return DropdownMenuItem<String>(
+                          value: setId,
+                          child: Text('$displayName ($questionCount questions)'),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedSourceSetId = value;
+                        });
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Create'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (result == true && nameController.text.isNotEmpty) {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  copyFromExisting && selectedSourceSetId != null
+                      ? 'Creating new set and copying questions...\nThis may take a moment.'
+                      : 'Creating new set...',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      try {
+        // Generate new set ID
+        final maxSetNumber = _availableSets
+            .where((id) => id.startsWith('set_'))
+            .map((id) => int.tryParse(id.replaceAll('set_', '')) ?? 0)
+            .fold(0, (max, num) => num > max ? num : max);
+        
+        final newSetId = 'set_${maxSetNumber + 1}';
+        final newSetDisplayName = nameController.text;
+
+        // Save the display name to database
+        await _questionService.updateSetDisplayName(newSetId, newSetDisplayName);
+
+        // Immediately update local state to show the new set in dropdown (even with 0 questions)
+        setState(() {
+          if (!_availableSets.contains(newSetId)) {
+            _availableSets.add(newSetId);
+          }
+          _setNames[newSetId] = newSetDisplayName;
+          _questionCounts[newSetId] = 0; // Start with 0 questions
+        });
+
+        // Copy questions if requested
+        if (copyFromExisting && selectedSourceSetId != null) {
+          await _questionService.duplicateQuestionsToSet(selectedSourceSetId!, newSetId);
+          
+          // After copying, update the question count
+          final copiedQuestions = await _questionService.getAllQuestions(setId: newSetId);
+          setState(() {
+            _questionCounts[newSetId] = copiedQuestions.length;
+          });
+        }
+        
+        // Close loading dialog
+        if (mounted) {
+          Navigator.of(context).pop(); // Close loading dialog
+        }
+
+        // Now switch to the new set (local state is already updated)
+        await _changeCurrentSet(newSetId);
+        
+        // Show success message
+        _showSuccessSnackBar(
+          copyFromExisting && selectedSourceSetId != null
+              ? 'Question set created and ${_questionCounts[newSetId] ?? 0} questions copied successfully'
+              : 'Question set created successfully. You can now add questions to this set.'
+        );
+      } catch (e) {
+        // Close loading dialog
+        if (mounted) {
+          Navigator.of(context).pop(); // Close loading dialog
+        }
+        _showErrorSnackBar('Error creating question set: $e');
+      }
+    }
+  }
+
+  Future<void> _showSetManagementDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Manage Question Sets'),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.6,
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: ListView.builder(
+            itemCount: _availableSets.length,
+            itemBuilder: (context, index) {
+              final setId = _availableSets[index];
+              final isActive = setId == _activeSetId;
+              final isDefault = setId == 'set_1';
+              final displayName = _setNames[setId] ?? setId;
+              final questionCount = _questionCounts[setId] ?? 0;
+              
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Row(
+                    children: [
+                      Text(
+                        displayName,
+                        style: TextStyle(
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      if (isActive) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'ACTIVE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (isDefault) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'DEFAULT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  subtitle: Text(
+                    '$questionCount questions',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!isActive)
+                        IconButton(
+                          onPressed: () async {
+                            await _questionService.setActiveSetId(setId);
+                            await _loadQuestionSetsAndQuestions();
+                            Navigator.of(context).pop();
+                            _showSuccessSnackBar('$displayName is now the active set for users');
+                          },
+                          icon: const Icon(Icons.check_circle_outline),
+                          tooltip: 'Set as Active',
+                          color: Colors.green,
+                        ),
+                      // Cannot delete set_1
+                      if (setId != 'set_1')
+                        IconButton(
+                          onPressed: () async {
+                            final canDelete = await _questionService.canDeleteSet(setId);
+                            if (!canDelete) {
+                              _showErrorSnackBar('Cannot delete the active set. Please set another set as active first.');
+                              return;
+                            }
+                            
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Question Set'),
+                                content: Text(
+                                  'Are you sure you want to delete "$displayName"?\n\nThis will permanently delete all $questionCount questions in this set.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              try {
+                                // Delete all questions in the set
+                                await _questionService.deleteAllQuestionsInSet(setId);
+                                await _loadQuestionSetsAndQuestions();
+                                Navigator.of(context).pop();
+                                _showSuccessSnackBar('Question set deleted');
+                              } catch (e) {
+                                _showErrorSnackBar('Error deleting set: $e');
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.delete),
+                          tooltip: 'Delete Set',
+                          color: Colors.red,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showQuestionDialog({SurveyQuestionModel? question}) {
+    if (_currentSetId == null) {
+      _showErrorSnackBar('No question set selected');
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (context) => QuestionEditDialog(
         question: question,
+        currentSetId: _currentSetId!,
         onSave: (savedQuestion) async {
           try {
             if (question == null) {
@@ -1510,6 +2144,8 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
   }
 
   void _addNewQuestionToBatch() {
+    if (_currentSetId == null) return;
+    
     final newQuestionId = 'new_${DateTime.now().millisecondsSinceEpoch}';
     final newQuestion = SurveyQuestionModel(
       id: '', // Will be assigned by Firestore
@@ -1518,6 +2154,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
       isRequired: false,
       order: _editableQuestions.length + 1,
       sectionId: 'section_personal', // Default to Personal Information section
+      setId: _currentSetId!, // Use current set
       configuration: SurveyQuestionModel.getDefaultConfiguration(QuestionType.textInput),
       options: [],
       validation: {},
@@ -1658,11 +2295,13 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
 // Question Edit Dialog (simplified version)
 class QuestionEditDialog extends StatefulWidget {
   final SurveyQuestionModel? question;
+  final String currentSetId;
   final Function(SurveyQuestionModel) onSave;
 
   const QuestionEditDialog({
     Key? key,
     this.question,
+    required this.currentSetId,
     required this.onSave,
   }) : super(key: key);
 
@@ -1940,6 +2579,7 @@ class _QuestionEditDialogState extends State<QuestionEditDialog> {
       isRequired: _isRequired,
       order: widget.question?.order ?? 0,
       sectionId: _selectedSectionId,
+      setId: widget.question?.setId ?? widget.currentSetId, // Use current set or existing set
       configuration: configuration,
       options: options,
       validation: _isRequired ? {'required': 'This field is required'} : {},
