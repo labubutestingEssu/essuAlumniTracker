@@ -1624,7 +1624,7 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
        case QuestionType.textArea:
          return 'Paragraph';
        case QuestionType.singleChoice:
-         return 'Multiple Choice';
+         return 'Radio Button';
        case QuestionType.checkboxList:
          return 'Checkbox';
        case QuestionType.dropdown:
