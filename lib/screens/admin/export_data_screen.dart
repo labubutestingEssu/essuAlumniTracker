@@ -13,12 +13,14 @@ import '../../config/routes.dart';
 import '../../services/survey_response_service.dart';
 import '../../models/survey_response_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'dart:convert';
 import '../../utils/web_download_stub.dart' if (dart.library.html) '../../utils/web_download.dart';
 import '../../services/unified_user_service.dart';
 import '../../services/survey_question_service.dart';
 import '../../models/survey_question_model.dart';
+import '../../utils/batch_year_utils.dart';
+import '../../services/user_service.dart';
 
 class ExportDataScreen extends StatefulWidget {
   const ExportDataScreen({Key? key}) : super(key: key);
@@ -33,14 +35,55 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
   String? _selectedBatchYear;
   String? _selectedCourse;
   final SurveyResponseService _surveyResponseService = SurveyResponseService();
+  final UserService _userService = UserService();
   List<String> _colleges = [];
   List<String> _batchYears = [];
   Map<String, List<String>> _coursesByCollege = {};
+  bool _isAdmin = false;
+  bool _isSuperAdmin = false;
+  String? _userCollege; // Store current user's college for restrictions
 
   @override
   void initState() {
     super.initState();
-    _loadCollegesAndCourses();
+    _checkAdminStatus().then((_) {
+      // After checking admin status, load colleges and courses
+      _loadCollegesAndCourses();
+    });
+  }
+  
+  Future<void> _checkAdminStatus() async {
+    try {
+      final isAdmin = await _userService.isCurrentUserAdmin();
+      final isSuperAdmin = await _userService.isCurrentUserSuperAdmin();
+      
+      // Get current user's college for filtering restrictions
+      String? userCollege;
+      if (!isSuperAdmin) {
+        final currentUser = await _userService.getCurrentUser();
+        userCollege = currentUser?.college;
+        print("Non-super admin user college: '$userCollege'");
+      }
+      
+      setState(() {
+        _isAdmin = isAdmin; // This now includes super admin check
+        _isSuperAdmin = isSuperAdmin;
+        _userCollege = userCollege;
+        
+        // Force set initial college filter for non-super admins
+        if (!_isSuperAdmin && userCollege != null && userCollege.isNotEmpty) {
+          _selectedCollege = userCollege;
+          print("Setting _selectedCollege to: '$_selectedCollege' for non-super admin");
+        } else if (_isSuperAdmin) {
+          _selectedCollege = null; // Super admins start with no college filter
+          print("Super admin detected - no college restriction");
+        }
+      });
+      
+      print("User is admin: $_isAdmin, Super Admin: $_isSuperAdmin, User College: '$userCollege', Selected College: '$_selectedCollege'");
+    } catch (e) {
+      print("Error checking admin status: $e");
+    }
   }
 
   Future<void> _loadCollegesAndCourses() async {
@@ -61,17 +104,14 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
         }
       }
     }
-    // Fetch all batch years from role-based tables
-    final allUsers = await UnifiedUserService().getAllUsers();
-    final Set<String> batchYearsSet = {};
-    for (final user in allUsers) {
-      final batchYear = user.batchYear;
-      if (batchYear.isNotEmpty) batchYearsSet.add(batchYear);
-    }
+    // Use BatchYearUtils to generate consistent school year display format (2020-2021 to current year)
+    // This matches the alumni directory screen for consistency
+    final schoolYearDisplay = BatchYearUtils.generateSchoolYearDisplay();
+    
     setState(() {
       _colleges = collegesSet.toList()..sort();
       _coursesByCollege = { for (var c in coursesByCollegeSet.keys) c: coursesByCollegeSet[c]!.toList()..sort() };
-      _batchYears = batchYearsSet.toList()..sort();
+      _batchYears = schoolYearDisplay;
     });
   }
 
@@ -86,9 +126,20 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       // Filter out ADMIN and SUPER_ADMIN roles - only export alumni
       List<UserModel> users = allUsers.where((user) => user.role == UserRole.alumni).toList();
       
+      // For non-super admins, ALWAYS enforce their college restriction
+      String? effectiveCollegeFilter = _selectedCollege;
+      if (!_isSuperAdmin && _userCollege != null && _userCollege!.isNotEmpty) {
+        effectiveCollegeFilter = _userCollege; // Force to user's college regardless of UI selection
+        print("Non-super admin: Forcing college filter to '$effectiveCollegeFilter' (user's college: '$_userCollege')");
+      } else if (_isSuperAdmin) {
+        print("Super admin: Using selected college filter '$effectiveCollegeFilter'");
+      } else {
+        print("Warning: Non-super admin with no college assigned - this shouldn't happen");
+      }
+      
       // Filter users based on selected criteria
-      if (_selectedCollege != null) {
-        users = users.where((user) => user.college == _selectedCollege).toList();
+      if (effectiveCollegeFilter != null) {
+        users = users.where((user) => user.college == effectiveCollegeFilter).toList();
       }
       if (_selectedBatchYear != null) {
         users = users.where((user) => user.batchYear == _selectedBatchYear).toList();
@@ -396,32 +447,84 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            DropdownButtonFormField<String>(
-                              value: _selectedCollege,
-                              decoration: const InputDecoration(
-                                labelText: 'College',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              ),
-                              items: [
-                                const DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text('All Colleges'),
+                            // Only show college dropdown for super admins
+                            if (_isSuperAdmin) ...[
+                              DropdownButtonFormField<String>(
+                                value: _selectedCollege,
+                                decoration: const InputDecoration(
+                                  labelText: 'College',
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 ),
-                                ..._colleges.map((college) {
-                                  return DropdownMenuItem<String>(
-                                    value: college,
-                                    child: Text(college),
-                                  );
-                                }).toList(),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedCollege = value;
-                                  _selectedCourse = null; // Reset course when college changes
-                                });
-                              },
-                            ),
+                                items: [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('All Colleges'),
+                                  ),
+                                  ..._colleges.map((college) {
+                                    return DropdownMenuItem<String>(
+                                      value: college,
+                                      child: Text(college),
+                                    );
+                                  }).toList(),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedCollege = value;
+                                    _selectedCourse = null; // Reset course when college changes
+                                  });
+                                },
+                              ),
+                            ] else ...[
+                              // Show disabled field for non-super admins with their college
+                              DropdownButtonFormField<String>(
+                                value: _selectedCollege,
+                                decoration: InputDecoration(
+                                  labelText: 'College',
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  suffixIcon: const Icon(Icons.lock, size: 20, color: Colors.grey),
+                                ),
+                                items: [
+                                  if (_selectedCollege != null)
+                                    DropdownMenuItem<String>(
+                                      value: _selectedCollege,
+                                      child: Text(_selectedCollege!),
+                                    ),
+                                ],
+                                onChanged: null, // Disabled for non-super admins
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.blue.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.admin_panel_settings,
+                                      size: 16,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'College Admin View: Limited to ${_userCollege ?? "your college"} - You can only export alumni from your college',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.blue.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             if (_selectedCollege != null) ...[
                               DropdownButtonFormField<String>(
@@ -452,7 +555,9 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                               const SizedBox(height: 16),
                             ],
                             DropdownButtonFormField<String>(
-                              value: _selectedBatchYear,
+                              value: _selectedBatchYear != null 
+                                  ? BatchYearUtils.batchYearToSchoolYear(_selectedBatchYear!)
+                                  : null,
                               decoration: const InputDecoration(
                                 labelText: 'Batch Year',
                                 border: OutlineInputBorder(),
@@ -463,16 +568,19 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                                   value: null,
                                   child: Text('All Years'),
                                 ),
-                                ..._batchYears.map((year) {
+                                ..._batchYears.map((schoolYear) {
                                   return DropdownMenuItem<String>(
-                                    value: year,
-                                    child: Text(year),
+                                    value: schoolYear,
+                                    child: Text(schoolYear),
                                   );
                                 }).toList(),
                               ],
                               onChanged: (value) {
                                 setState(() {
-                                  _selectedBatchYear = value;
+                                  // Convert school year display format back to batch year format for filtering
+                                  _selectedBatchYear = value != null 
+                                      ? BatchYearUtils.schoolYearToBatchYear(value)
+                                      : null;
                                 });
                               },
                             ),
@@ -492,6 +600,45 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                         ),
                       ),
                     ),
+                    // Show admin view information
+                    if (_isAdmin) 
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: FutureBuilder<bool>(
+                          future: _userService.isCurrentUserSuperAdmin(),
+                          builder: (context, snapshot) {
+                            final isSuperAdmin = snapshot.data == true;
+                            return Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isSuperAdmin ? Colors.purple.shade50 : Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isSuperAdmin ? Colors.purple.shade200 : Colors.blue.shade200,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isSuperAdmin ? Icons.security : Icons.admin_panel_settings,
+                                    size: 16,
+                                    color: isSuperAdmin ? Colors.purple : Colors.blue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      isSuperAdmin 
+                                        ? 'Admin View: Full access - You can export data from all colleges'
+                                        : 'College Admin View: Limited to ${_userCollege ?? "your college"} - You can only export alumni from your college',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     Card(
                       child: Padding(
