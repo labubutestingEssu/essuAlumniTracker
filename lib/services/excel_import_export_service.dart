@@ -1,8 +1,11 @@
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/survey_question_model.dart';
 import '../utils/batch_year_utils.dart';
+import 'web_file_picker_stub.dart' if (dart.library.html) 'web_file_picker.dart' as web_file_picker;
 
 class ExcelImportExportService {
   /// Generate and download Excel template for question import
@@ -129,20 +132,28 @@ class ExcelImportExportService {
   /// Pick and parse Excel file
   static Future<Map<String, dynamic>?> pickAndParseExcelFile() async {
     try {
-      // Pick file
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
-        withData: true,
-      );
+      Uint8List? bytes;
       
-      if (result == null || result.files.isEmpty) {
-        return null;
+      if (kIsWeb) {
+        // Use HTML file input for web
+        bytes = await web_file_picker.pickFileWeb();
+      } else {
+        // Use FilePicker for mobile/desktop
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['xlsx', 'xls'],
+          withData: true,
+        );
+        
+        if (result == null || result.files.isEmpty) {
+          return null;
+        }
+        
+        bytes = result.files.first.bytes;
       }
       
-      final bytes = result.files.first.bytes;
       if (bytes == null) {
-        throw Exception('Could not read file data');
+        return null; // User cancelled
       }
       
       // Parse Excel
