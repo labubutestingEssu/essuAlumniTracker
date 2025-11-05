@@ -647,56 +647,56 @@ class _SurveyQuestionManagementScreenState extends State<SurveyQuestionManagemen
     return Row(
       children: [
         if (!_isBatchEditMode) ...[
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.import_export),
-            tooltip: 'Import/Export',
-            onSelected: (value) {
-              switch (value) {
-                case 'download_template':
-                  _downloadExcelTemplate();
-                  break;
-                case 'import_excel':
-                  _importQuestionsFromExcel();
-                  break;
-                case 'export_excel':
-                  _exportCurrentSetToExcel();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'download_template',
-                child: Row(
-                  children: [
-                    Icon(Icons.download, size: 20),
-                    SizedBox(width: 8),
-                    Text('Download Template'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'import_excel',
-                child: Row(
-                  children: [
-                    Icon(Icons.upload_file, size: 20),
-                    SizedBox(width: 8),
-                    Text('Import Questions'),
-                  ],
-                ),
-              ),
-              if (_questions.isNotEmpty)
-                const PopupMenuItem(
-                  value: 'export_excel',
-                  child: Row(
-                    children: [
-                      Icon(Icons.file_download, size: 20),
-                      SizedBox(width: 8),
-                      Text('Export Current Set'),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+          // PopupMenuButton<String>(
+          //   icon: const Icon(Icons.import_export),
+          //   tooltip: 'Import/Export',
+          //   onSelected: (value) {
+          //     switch (value) {
+          //       case 'download_template':
+          //         _downloadExcelTemplate();
+          //         break;
+          //       case 'import_excel':
+          //         _importQuestionsFromExcel();
+          //         break;
+          //       case 'export_excel':
+          //         _exportCurrentSetToExcel();
+          //         break;
+          //     }
+          //   },
+          //   itemBuilder: (context) => [
+          //     const PopupMenuItem(
+          //       value: 'download_template',
+          //       child: Row(
+          //         children: [
+          //           Icon(Icons.download, size: 20),
+          //           SizedBox(width: 8),
+          //           Text('Download Template'),
+          //         ],
+          //       ),
+          //     ),
+          //     const PopupMenuItem(
+          //       value: 'import_excel',
+          //       child: Row(
+          //         children: [
+          //           Icon(Icons.upload_file, size: 20),
+          //           SizedBox(width: 8),
+          //           Text('Import Questions'),
+          //         ],
+          //       ),
+          //     ),
+          //     if (_questions.isNotEmpty)
+          //       const PopupMenuItem(
+          //         value: 'export_excel',
+          //         child: Row(
+          //           children: [
+          //             Icon(Icons.file_download, size: 20),
+          //             SizedBox(width: 8),
+          //             Text('Export Current Set'),
+          //           ],
+          //         ),
+          //       ),
+          //   ],
+          // ),
           IconButton(
             onPressed: _initializeDefaultQuestions,
             icon: const Icon(Icons.restore),
